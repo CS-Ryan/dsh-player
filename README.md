@@ -1,6 +1,6 @@
-# dsh-replay ⚡
+# dsh-player ⚡
 
-> **DSH (DeepSeek Harness) 会话日志的可视化回放器**  
+> **DSH (DeepSeek Harness) 会话日志的可视化播放器**  
 > 把不可读的 `session.jsonl.zstd` 变成可播放、可定位、可分享的会话时间线。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -11,13 +11,13 @@
 
 ## 📖 设计原则与核心功能
 
-- **小而美、只读、本地、零依赖**：专注于将 DSH 底层 append-only 日志还原为交互式时间线，不依赖远程服务，完全本地处理。
-- **多帧 Zstandard & JSONL 流解析**：支持多帧 `.jsonl.zstd` 解压（Node 24 原生加速 + 纯 JS 回退）与未压缩 `.jsonl`。
+- **小而美、只读、本地、零依赖**：专注于将 DSH 底层 append-only 日志还原为交互式时间线播放器，不依赖远程服务，完全本地安全处理。
+- **多帧 Zstandard & JSONL 流解析**：支持多帧 `.jsonl.zstd` 解压（Node.js 24 原生加速 + 纯 JS 回退）与未压缩 `.jsonl`。
 - **智能重构**：将扁平事件流重组为清晰的 `Session → Turn → Step → Event` 层级，并完整支持 DeepSeek R1 思维链推理块、工具调用与结果、用户审批请求、错误堆栈等。
-- **三栏时间线交互回放**：
+- **三栏时间线交互播放**：
   - **顶部**：播放/暂停、上一帧/下一帧、1x/2x/4x/8x 变速、时间线进度滑块、精确 seq 跳转、全局正则搜索与过滤胶囊。
   - **左侧**：会话轮次树（Turn / Step），直观展示各轮 Prompt、工具调用计数与耗时。
-  - **中间**：差异色标事件卡片（用户蓝、助手绿、推理紫、工具橙、报错红），支持思维链一键折叠/展开。
+  - **中间**：差异色标事件卡片（用户蓝、助手绿、推理紫、工具橙、输出青、报错红），支持思维链一键折叠/展开。
   - **右侧**：详情检查器，支持格式化卡片视图与语法高亮 Raw JSON 切换、Token 明细、耗时统计、工具参数与返回值查看、关联调用一键跳转。
 - **键盘快捷键**：
   - `Space`：播放 / 暂停
@@ -26,7 +26,7 @@
   - `/`：聚焦搜索框
   - `Esc`：关闭弹窗 / 取消聚焦
 - **隐私脱敏与单文件 HTML 导出**：
-  - 一键导出完全自包含的单文件 `.html`（内嵌完整回放器与数据），接收方直接用任何浏览器离线打开，无需安装 DSH 或插件。
+  - 一键导出完全自包含的单文件 `.html`（内嵌完整播放器与数据），接收方直接用任何浏览器离线打开，无需安装 DSH 或插件。
   - 导出前支持 API Key、环境变量、家目录路径脱敏与自定义正则表达式替换，并支持实时前后差异对比。
 
 ---
@@ -36,33 +36,35 @@
 ### 1. 作为 DSH 插件使用
 在 DSH 项目中安装：
 ```bash
-dsh plugin add dsh-replay
+dsh plugin add dsh-player
 ```
-在 DSH 中直接回放：
+在 DSH 中直接播放：
 ```bash
+dsh player session.jsonl.zstd
+# 或者使用别名:
 dsh replay session.jsonl.zstd
 ```
 
 ### 2. 作为独立 CLI 工具使用
 ```bash
-# 本地快速启动浏览器回放
-npx dsh-replay session.jsonl.zstd
+# 本地快速启动浏览器播放
+npx dsh-player session.jsonl.zstd
 
 # 指定端口启动
-npx dsh-replay session.jsonl -p 8080
+npx dsh-player session.jsonl -p 8080
 
 # 直接导出自包含离线 HTML 并启用敏感信息脱敏
-npx dsh-replay session.jsonl.zstd --export replay.html --mask
+npx dsh-player session.jsonl.zstd --export player.html --mask
 ```
 
 ### 3. CLI 参数说明
 ```text
 使用方法:
-  dsh-replay <session.jsonl | session.jsonl.zstd> [选项]
+  dsh-player <session.jsonl | session.jsonl.zstd> [选项]
 
 选项:
-  -p, --port <port>       指定本地回放服务端口 (默认: 3721)
-  -e, --export <file>     直接导出自包含离线回放 HTML 文件，不启动服务
+  -p, --port <port>       指定本地播放服务端口 (默认: 3721)
+  -e, --export <file>     直接导出自包含离线播放 HTML 文件，不启动服务
   -m, --mask              导出时启用默认隐私脱敏 (API Key、环境变量、家目录路径)
   --no-open               启动本地服务时不自动打开浏览器
   -v, --version           查看版本号
@@ -79,7 +81,7 @@ import {
   buildSessionTree,
   generateStandaloneHtml,
   maskObject
-} from 'dsh-replay'
+} from 'dsh-player'
 
 // 1. 从文件直接加载并解析会话
 const session = loadSessionFromFile('./session.jsonl.zstd')

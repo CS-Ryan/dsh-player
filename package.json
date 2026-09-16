@@ -1,12 +1,13 @@
 {
-  "name": "dsh-replay",
+  "name": "dsh-player",
   "version": "1.0.0",
-  "description": "Visual session replay plugin for DSH (DeepSeek Harness) session logs",
+  "description": "Visual session player for DSH (DeepSeek Harness) session logs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
   "bin": {
-    "dsh-replay": "./bin/dsh-replay.js"
+    "dsh-player": "./bin/dsh-player.js",
+    "dsh-replay": "./bin/dsh-player.js"
   },
   "files": [
     "dist",
@@ -19,18 +20,20 @@
     "build": "tsc",
     "test": "node --test test/*.test.js",
     "prepublishOnly": "npm run build && npm test",
-    "start": "node bin/dsh-replay.js"
+    "start": "node bin/dsh-player.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CS-Ryan/dsh-replay.git"
+    "url": "git+https://github.com/CS-Ryan/dsh-player.git"
   },
   "keywords": [
     "dsh",
+    "dsh-player",
     "deepseek",
     "deepseek-harness",
     "cordis",
     "plugin",
+    "player",
     "replay",
     "jsonl",
     "zstd",
@@ -41,9 +44,9 @@
   "author": "CS-Ryan <ryanchenh@outlook.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/CS-Ryan/dsh-replay/issues"
+    "url": "https://github.com/CS-Ryan/dsh-player/issues"
   },
-  "homepage": "https://github.com/CS-Ryan/dsh-replay#readme",
+  "homepage": "https://github.com/CS-Ryan/dsh-player#readme",
   "dependencies": {
     "fzstd": "^0.1.1"
   },

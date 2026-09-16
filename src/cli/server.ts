@@ -74,7 +74,7 @@ export function startReplayServer(session: Session, options: ServerOptions = {})
 
       server.listen(port, () => {
         const address = `http://localhost:${port}`
-        console.log(`⚡ [dsh-replay] Replay server is running at ${address}`)
+        console.log(`⚡ [dsh-player] Player server is running at ${address}`)
         console.log(`Press Ctrl+C to stop the server`)
 
         if (shouldOpen) {

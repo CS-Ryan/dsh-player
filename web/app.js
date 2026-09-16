@@ -1,4 +1,4 @@
-// dsh-replay Web Client Application
+// dsh-player Web Client Application
 
 // --- i18n Dictionaries ---
 const I18N = {
@@ -1177,7 +1177,7 @@ function executeExport() {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `dsh-replay-${state.session.sessionId || 'session'}.html`
+  a.download = `dsh-player-${state.session.sessionId || 'session'}.html`
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)

@@ -37,7 +37,7 @@ export function loadSessionFromFile(filePath: string): Session {
 }
 
 // --- Cordis Plugin Integration ---
-export const name = 'dsh-replay'
+export const name = 'dsh-player'
 export const reusable = true
 
 export interface PluginConfig {
@@ -49,21 +49,22 @@ export interface PluginConfig {
 export function apply(ctx: any, config: PluginConfig = {}) {
   // 1. Register CLI Command into DSH / Cordis command system
   if (ctx && typeof ctx.command === 'function') {
-    ctx
-      .command('replay <file>', '启动 DSH 会话日志可视化回放器')
+    const cmd = ctx
+      .command('player <file>', '启动 DSH 会话日志可视化播放器')
+      .alias('replay')
       .option('port', '-p <port:number> 服务端口', { fallback: config.port || 3721 })
       .option('export', '-e <out:string> 导出独立单文件 HTML')
       .option('mask', '-m 启用敏感信息脱敏', { fallback: config.defaultMask ?? false })
       .action(async ({ options }: any, file: string) => {
         if (!file) {
-          return '错误: 请提供要回放的会话日志文件路径 (.jsonl 或 .jsonl.zstd)'
+          return '错误: 请提供要播放的会话日志文件路径 (.jsonl 或 .jsonl.zstd)'
         }
         try {
           const session = loadSessionFromFile(file)
           if (options.export) {
             const html = generateStandaloneHtml(session, options.mask ? { maskApiKeys: true, maskEnvVars: true, maskPaths: true } : undefined)
             fs.writeFileSync(options.export, html, 'utf-8')
-            return `已成功导出独立离线回放 HTML: ${path.resolve(options.export)}`
+            return `已成功导出独立离线播放 HTML: ${path.resolve(options.export)}`
           }
 
           // Start lightweight local server
@@ -72,17 +73,17 @@ export function apply(ctx: any, config: PluginConfig = {}) {
             port: options.port || 3721,
             open: true
           })
-          return `回放服务已在 http://localhost:${options.port || 3721} 启动`
+          return `播放服务已在 http://localhost:${options.port || 3721} 启动`
         } catch (err: any) {
-          return `回放启动失败: ${err.message}`
+          return `播放启动失败: ${err.message}`
         }
       })
   }
 
   // 2. WebUI / Router mounting if Cordis WebUI service is present
   if (ctx && ctx.router) {
-    ctx.router.get('/dsh-replay/api/session', (c: any) => {
-      c.body = { status: 'ok', message: 'dsh-replay plugin is active' }
+    ctx.router.get('/dsh-player/api/session', (c: any) => {
+      c.body = { status: 'ok', message: 'dsh-player plugin is active' }
     })
   }
 }

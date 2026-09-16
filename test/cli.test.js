@@ -8,12 +8,12 @@ const FIXTURES_DIR = path.resolve(import.meta.dirname, 'fixtures')
 const ZSTD_PATH = path.join(FIXTURES_DIR, 'sample-session.jsonl.zstd')
 const OUTPUT_HTML = path.join(FIXTURES_DIR, 'exported-replay.html')
 
-test('CLI bin/dsh-replay.js exports standalone HTML successfully with --export and --mask', () => {
+test('CLI bin/dsh-player.js exports standalone HTML successfully with --export and --mask', () => {
   if (fs.existsSync(OUTPUT_HTML)) {
     fs.unlinkSync(OUTPUT_HTML)
   }
 
-  const cmd = `node bin/dsh-replay.js "${ZSTD_PATH}" --export "${OUTPUT_HTML}" --mask`
+  const cmd = `node bin/dsh-player.js "${ZSTD_PATH}" --export "${OUTPUT_HTML}" --mask`
   const stdout = execSync(cmd, { encoding: 'utf-8' })
 
   assert.match(stdout, /已成功导出自包含单文件 HTML/)
