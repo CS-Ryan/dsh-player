@@ -1,0 +1,2221 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>dsh-replay - DSH 会话日志可视化回放器</title>
+  <style>
+:root {
+  --bg-primary: #0d1117;
+  --bg-secondary: #161b22;
+  --bg-tertiary: #21262d;
+  --bg-card: #1c2128;
+  --bg-card-hover: #262c36;
+  --bg-card-active: #2d333b;
+  --border-color: #30363d;
+  --border-focus: #58a6ff;
+  --text-primary: #f0f6fc;
+  --text-secondary: #8b949e;
+  --text-muted: #6e7681;
+  --accent-blue: #58a6ff;
+  --accent-green: #3fb950;
+  --accent-purple: #bc8cff;
+  --accent-amber: #d29922;
+  --accent-teal: #39c5bb;
+  --accent-red: #f85149;
+  --accent-orange: #db6d28;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="light"] {
+  --bg-primary: #f6f8fa;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #eaeef2;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f3f4f6;
+  --bg-card-active: #e5e7eb;
+  --border-color: #d0d7de;
+  --border-focus: #0969da;
+  --text-primary: #1f2328;
+  --text-secondary: #57606a;
+  --text-muted: #656d76;
+  --accent-blue: #0969da;
+  --accent-green: #1a7f37;
+  --accent-purple: #8250df;
+  --accent-amber: #9a6700;
+  --accent-teal: #1b7c83;
+  --accent-red: #cf222e;
+  --accent-orange: #bc4c00;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Header & Navbar */
+.app-header {
+  background-color: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: 8px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.brand-badge {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 12px;
+  background-color: var(--bg-tertiary);
+  color: var(--accent-blue);
+  border: 1px solid var(--border-color);
+}
+
+.session-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.session-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+
+.btn:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--text-secondary);
+}
+
+.btn-primary {
+  background: #238636;
+  border-color: #2ea043;
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background: #2ea043;
+}
+
+.btn-icon {
+  padding: 6px 8px;
+}
+
+.btn.active {
+  background: var(--accent-blue);
+  color: #ffffff;
+  border-color: var(--accent-blue);
+}
+
+/* Playback Toolbar */
+.playback-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px 12px;
+}
+
+.playback-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.speed-select {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 11px;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+
+.scrubber-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.scrubber {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--bg-tertiary);
+  outline: none;
+  cursor: pointer;
+}
+
+.scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent-blue);
+  cursor: pointer;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
+}
+
+.seq-jump {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.seq-input {
+  width: 54px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: center;
+}
+
+/* Search & Filter Bar */
+.filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 2px 6px;
+  flex: 1;
+  max-width: 320px;
+}
+
+.search-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 12px;
+  padding: 4px;
+  flex: 1;
+}
+
+.filter-pills {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow-x: auto;
+}
+
+.pill {
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.pill.active {
+  background: var(--accent-blue);
+  color: #fff;
+  border-color: var(--accent-blue);
+}
+
+/* Main Layout (3 Columns) */
+.main-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* Column 1: Left Session Tree */
+.tree-col {
+  width: 280px;
+  min-width: 200px;
+  max-width: 450px;
+  border-right: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.col-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tree-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.turn-node {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.turn-header {
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  background: var(--bg-card);
+}
+
+.turn-header:hover {
+  background: var(--bg-card-hover);
+}
+
+.turn-prompt {
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 0 10px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.steps-list {
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+}
+
+.step-node {
+  padding: 6px 12px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-color);
+  transition: background 0.1s;
+}
+
+.step-node:last-child {
+  border-bottom: none;
+}
+
+.step-node:hover {
+  background: var(--bg-card-hover);
+}
+
+.step-node.active {
+  background: var(--bg-card-active);
+  border-left: 3px solid var(--accent-blue);
+}
+
+/* Column 2: Timeline Events */
+.timeline-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.timeline-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Event Card */
+.event-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 0.1s, border-color 0.15s, box-shadow 0.15s;
+  position: relative;
+}
+
+.event-card:hover {
+  border-color: var(--text-secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.event-card.selected {
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.3);
+  background: var(--bg-card-active);
+}
+
+.event-card.type-user_message {
+  border-left: 4px solid var(--accent-blue);
+}
+
+.event-card.type-assistant_message {
+  border-left: 4px solid var(--accent-green);
+}
+
+.event-card.type-reasoning {
+  border-left: 4px solid var(--accent-purple);
+  background: rgba(188, 140, 255, 0.04);
+}
+
+.event-card.type-tool_call {
+  border-left: 4px solid var(--accent-amber);
+}
+
+.event-card.type-tool_result {
+  border-left: 4px solid var(--accent-teal);
+}
+
+.event-card.type-approval_request,
+.event-card.type-approval_result {
+  border-left: 4px solid var(--accent-orange);
+}
+
+.event-card.type-error {
+  border-left: 4px solid var(--accent-red);
+  background: rgba(248, 81, 73, 0.05);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+}
+
+.card-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-blue { background: rgba(88, 166, 255, 0.15); color: var(--accent-blue); }
+.badge-green { background: rgba(63, 185, 80, 0.15); color: var(--accent-green); }
+.badge-purple { background: rgba(188, 140, 255, 0.15); color: var(--accent-purple); }
+.badge-amber { background: rgba(210, 153, 34, 0.15); color: var(--accent-amber); }
+.badge-teal { background: rgba(57, 197, 187, 0.15); color: var(--accent-teal); }
+.badge-orange { background: rgba(219, 109, 40, 0.15); color: var(--accent-orange); }
+.badge-red { background: rgba(248, 81, 73, 0.15); color: var(--accent-red); }
+.badge-gray { background: var(--bg-tertiary); color: var(--text-secondary); }
+
+.card-seq {
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+
+.card-body {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  user-select: text;
+  word-break: break-word;
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow: hidden;
+  position: relative;
+}
+
+.card-body.expanded {
+  max-height: none;
+}
+
+.card-body-preview {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--bg-primary);
+  padding: 8px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+}
+
+/* Column 3: Right Inspector */
+.inspector-col {
+  width: 360px;
+  min-width: 250px;
+  max-width: 600px;
+  border-left: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.inspector-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-card);
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 8px;
+  font-size: 12px;
+  text-align: center;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-btn.active {
+  color: var(--accent-blue);
+  border-bottom-color: var(--accent-blue);
+  font-weight: 600;
+}
+
+.inspector-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  user-select: text;
+}
+
+.inspector-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  background: var(--bg-card);
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  font-size: 12px;
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.meta-item-label {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.meta-item-val {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.code-block {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-x: auto;
+  position: relative;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-size: 10px;
+  padding: 2px 6px;
+  opacity: 0.7;
+}
+
+.copy-btn:hover {
+  opacity: 1;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-overlay.open {
+  display: flex;
+}
+
+.modal-dialog {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  width: 90%;
+  max-width: 650px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.modal-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.modal-content {
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 13px;
+}
+
+.modal-footer {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.text-input {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--text-primary);
+  font-size: 12px;
+  outline: none;
+}
+
+.text-input:focus {
+  border-color: var(--border-focus);
+}
+
+.diff-preview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.diff-col-title {
+  font-size: 10px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: var(--text-muted);
+}
+
+/* Drag and Drop Overlay */
+.drop-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(88, 166, 255, 0.2);
+  border: 4px dashed var(--accent-blue);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--accent-blue);
+  backdrop-filter: blur(2px);
+}
+
+.drop-overlay.active {
+  display: flex;
+}
+
+/* Empty placeholder */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-secondary);
+  gap: 12px;
+  padding: 40px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 36px;
+  opacity: 0.6;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+</style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-top">
+      <div class="brand-section">
+        <div class="brand-title">
+          <span>⚡ dsh-replay</span>
+          <span class="brand-badge">v2.0</span>
+        </div>
+        <div class="session-info" id="session-meta">
+          <span class="session-badge" id="meta-session-id">No Session Loaded</span>
+          <span id="meta-counts">0 Turns · 0 Events</span>
+          <span id="meta-duration">0s</span>
+          <span id="meta-tokens">0 Tokens</span>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <input type="file" id="file-input" accept=".jsonl,.zstd" style="display: none;">
+        <button class="btn" id="btn-open" title="Open .jsonl or .jsonl.zstd file">
+          📂 <span data-i18n="open">打开日志</span>
+        </button>
+        <button class="btn btn-primary" id="btn-export-modal" title="Export standalone single-file HTML">
+          💾 <span data-i18n="export">导出分享</span>
+        </button>
+        <button class="btn btn-icon" id="btn-lang" title="Switch Language">
+          🌐 <span id="lang-label">EN</span>
+        </button>
+        <button class="btn btn-icon" id="btn-theme" title="Toggle Light/Dark Theme">
+          🌙
+        </button>
+      </div>
+    </div>
+
+    <!-- Playback & Scrubber Toolbar -->
+    <div class="playback-bar">
+      <div class="playback-controls">
+        <button class="btn btn-icon" id="btn-prev" title="Previous Step (Left Arrow)">⏮</button>
+        <button class="btn btn-primary btn-icon" id="btn-play" title="Play/Pause (Space)">▶</button>
+        <button class="btn btn-icon" id="btn-next" title="Next Step (Right Arrow)">⏭</button>
+        <select class="speed-select" id="speed-select" title="Playback Speed">
+          <option value="1">1x</option>
+          <option value="2">2x</option>
+          <option value="4">4x</option>
+          <option value="8">8x</option>
+        </select>
+      </div>
+
+      <div class="scrubber-container">
+        <span id="current-frame-label" style="font-size: 11px; font-family: var(--font-mono); min-width: 55px;">0 / 0</span>
+        <input type="range" class="scrubber" id="scrubber" min="0" max="0" value="0">
+        <div class="seq-jump">
+          <span>Seq:</span>
+          <input type="number" class="seq-input" id="seq-input" placeholder="seq">
+          <button class="btn btn-icon" id="btn-seq-go" style="padding: 2px 6px;">Go</button>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <div class="search-box">
+          <span style="font-size: 12px; margin-right: 4px;">🔍</span>
+          <input type="text" class="search-input" id="search-input" placeholder="搜索内容、参数或结果 (按 / 聚焦)..." data-i18n-placeholder="search_placeholder">
+          <button class="btn btn-icon" id="btn-regex" style="padding: 1px 4px; font-size: 11px;" title="Regular Expression">.*</button>
+        </div>
+
+        <div class="filter-pills" id="filter-pills">
+          <div class="pill active" data-filter="all" data-i18n="filter_all">全部</div>
+          <div class="pill" data-filter="tool" data-i18n="filter_tool">工具调用</div>
+          <div class="pill" data-filter="error" data-i18n="filter_error">错误</div>
+          <div class="pill" data-filter="reasoning" data-i18n="filter_reasoning">推理</div>
+          <div class="pill" data-filter="user" data-i18n="filter_user">用户输入</div>
+        </div>
+
+        <select class="speed-select" id="tool-filter" style="display: none;">
+          <option value="" data-i18n="all_tools">所有工具</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main 3-Column Layout -->
+  <main class="main-container">
+    <!-- Left Column: Session Tree -->
+    <aside class="tree-col">
+      <div class="col-header">
+        <span data-i18n="session_tree">会话轮次 (Turns)</span>
+        <span id="turn-count-badge" class="badge badge-gray">0</span>
+      </div>
+      <div class="tree-list" id="session-tree">
+        <div class="empty-state">
+          <div class="empty-icon">📂</div>
+          <div data-i18n="no_session">暂未加载会话日志</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Center Column: Timeline -->
+    <section class="timeline-col">
+      <div class="col-header" style="background: var(--bg-secondary);">
+        <span data-i18n="timeline">执行时间线 (Timeline)</span>
+        <span id="timeline-count-badge" class="badge badge-gray">0</span>
+      </div>
+      <div class="timeline-list" id="timeline-list">
+        <div class="empty-state">
+          <div class="empty-icon">⚡</div>
+          <div data-i18n="drag_hint">请拖入 session.jsonl / .zstd 文件或点击上方打开</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Detail Inspector -->
+    <aside class="inspector-col">
+      <div class="inspector-tabs">
+        <button class="tab-btn active" id="tab-formatted" data-i18n="tab_formatted">格式化视图</button>
+        <button class="tab-btn" id="tab-raw" data-i18n="tab_raw">原始 JSON</button>
+      </div>
+      <div class="inspector-body" id="inspector-content">
+        <div class="empty-state">
+          <div class="empty-icon">🔍</div>
+          <div data-i18n="select_event_hint">在时间线中点击事件查看详情</div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Export & Desensitization Modal -->
+  <div class="modal-overlay" id="export-modal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <span data-i18n="export_modal_title">导出独立离线 HTML 回放文件</span>
+        <button class="btn btn-icon" id="btn-close-modal">✕</button>
+      </div>
+      <div class="modal-content">
+        <p style="color: var(--text-secondary); font-size: 12px;" data-i18n="export_desc">
+          导出的单文件 HTML 内嵌了完整交互式回放器和会话数据，接收方用任何浏览器均可直接双击打开离线浏览。
+        </p>
+
+        <div class="form-group">
+          <div class="section-label" data-i18n="privacy_options">隐私脱敏选项</div>
+          <label class="checkbox-label">
+            <input type="checkbox" id="mask-api-keys" checked>
+            <span data-i18n="mask_keys">脱敏 API 密钥 (OpenAI, DeepSeek, Bearer, Token 等)</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="mask-env-vars" checked>
+            <span data-i18n="mask_env">脱敏环境变量与敏感配置 (PASSWORD, SECRET, KEY 等)</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="mask-paths" checked>
+            <span data-i18n="mask_paths">脱敏用户家目录路径 (替换系统用户名路径为 ~)</span>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <div class="section-label" data-i18n="custom_regex">自定义脱敏正则 (可选)</div>
+          <input type="text" class="text-input" id="mask-custom-regex" placeholder="例如: 192\.168\.\d+\.\d+ 或 \b\d{11}\b">
+        </div>
+
+        <div class="form-group">
+          <div class="section-label" data-i18n="preview_diff">脱敏效果实时预览</div>
+          <div class="diff-preview">
+            <div>
+              <div class="diff-col-title" data-i18n="preview_before">原始数据片段:</div>
+              <div id="diff-before" style="color: var(--accent-red); white-space: pre-wrap;"></div>
+            </div>
+            <div>
+              <div class="diff-col-title" data-i18n="preview_after">脱敏后数据片段:</div>
+              <div id="diff-after" style="color: var(--accent-green); white-space: pre-wrap;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="btn-cancel-modal" data-i18n="cancel">取消</button>
+        <button class="btn btn-primary" id="btn-confirm-export" data-i18n="download_html">📥 下载离线 HTML</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drag and Drop Overlay -->
+  <div class="drop-overlay" id="drop-overlay">
+    <span>📥 释放文件以回放 (Release to replay .jsonl / .zstd)</span>
+  </div>
+
+  <script>
+window.__DSH_SESSION__ = {"sessionId":"dsh-session-20260913-abc1","version":"2.0","startTime":1710000000000,"endTime":1710000023500,"duration":23500,"turns":[{"turnIndex":1,"userPrompt":"请帮我检查项目目录中的配置文件，并统计代码行数","steps":[{"stepIndex":1,"title":"User Input","events":[{"seq":1,"ts":1710000000000,"type":"user_message","role":"user","content":"请帮我检查项目目录中的配置文件，并统计代码行数","raw":{"seq":1,"ts":1710000000000,"type":"user","role":"user","content":"请帮我检查项目目录中的配置文件，并统计代码行数","session_id":"dsh-session-20260913-abc1"}},{"seq":2,"ts":1710000001200,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"用户要求检查项目目录中的配置文件并统计代码行数。\n首先我应该查看当前目录下的文件列表，确定配置文件名称。我将使用 shell.exec 执行目录查看命令。","tokens":{"input":120,"output":80,"total":200},"duration":1200,"raw":{"seq":2,"ts":1710000001200,"type":"reasoning","role":"assistant","model":"deepseek-r1","content":"用户要求检查项目目录中的配置文件并统计代码行数。\n首先我应该查看当前目录下的文件列表，确定配置文件名称。我将使用 shell.exec 执行目录查看命令。","duration":1200,"tokens":{"input":120,"output":80,"total":200}}}],"startSeq":1,"endSeq":2,"startTime":1710000000000,"endTime":1710000001200,"duration":1200,"toolCallsCount":0,"hasError":false,"tokens":{"input":120,"output":80,"total":200}},{"stepIndex":2,"title":"Tool: shell.exec","events":[{"seq":3,"ts":1710000001500,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"shell.exec","toolCallId":"call_001","args":{"command":"dir /b","timeout":5000},"tokens":{"input":200,"output":25,"total":225},"raw":{"seq":3,"ts":1710000001500,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"shell.exec","toolCallId":"call_001","args":{"command":"dir /b","timeout":5000},"tokens":{"input":200,"output":25,"total":225}}},{"seq":4,"ts":1710000002100,"type":"tool_result","role":"tool","toolName":"shell.exec","toolCallId":"call_001","result":"package.json\nsrc\ntsconfig.json\nREADME.md\nAPI_KEY=********","exitCode":0,"content":"package.json\nsrc\ntsconfig.json\nREADME.md\nAPI_KEY=********","duration":600,"parentSeq":3,"raw":{"seq":4,"ts":1710000002100,"type":"tool_result","role":"tool","toolName":"shell.exec","toolCallId":"call_001","result":"package.json\nsrc\ntsconfig.json\nREADME.md\nAPI_KEY=********","exitCode":0,"duration":600}}],"startSeq":3,"endSeq":4,"startTime":1710000001500,"endTime":1710000002100,"duration":600,"toolCallsCount":1,"hasError":false,"tokens":{"input":0,"output":0,"total":0}},{"stepIndex":3,"title":"Assistant Response","events":[{"seq":5,"ts":1710000003000,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"项目根目录下包含 package.json, src, tsconfig.json 等关键文件。接下来我将读取 package.json 的配置信息。","tokens":{"input":260,"output":45,"total":305},"raw":{"seq":5,"ts":1710000003000,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"项目根目录下包含 package.json, src, tsconfig.json 等关键文件。接下来我将读取 package.json 的配置信息。","tokens":{"input":260,"output":45,"total":305}}}],"startSeq":5,"endSeq":5,"startTime":1710000003000,"endTime":1710000003000,"duration":0,"toolCallsCount":0,"hasError":false,"tokens":{"input":0,"output":0,"total":0}},{"stepIndex":4,"title":"Tool: file.read","events":[{"seq":6,"ts":1710000003200,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"file.read","toolCallId":"call_002","args":{"path":"~\\Desktop\\dsh-replay\\package.json"},"tokens":{"input":310,"output":20,"total":330},"raw":{"seq":6,"ts":1710000003200,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"file.read","toolCallId":"call_002","args":{"path":"~\\Desktop\\dsh-replay\\package.json"},"tokens":{"input":310,"output":20,"total":330}}},{"seq":7,"ts":1710000003500,"type":"tool_result","role":"tool","toolName":"file.read","toolCallId":"call_002","result":"{\n  \"name\": \"dsh-replay\",\n  \"version\": \"1.0.0\",\n  \"author\": \"ryan\"\n}","exitCode":0,"content":"{\n  \"name\": \"dsh-replay\",\n  \"version\": \"1.0.0\",\n  \"author\": \"ryan\"\n}","duration":300,"parentSeq":6,"raw":{"seq":7,"ts":1710000003500,"type":"tool_result","role":"tool","toolName":"file.read","toolCallId":"call_002","result":"{\n  \"name\": \"dsh-replay\",\n  \"version\": \"1.0.0\",\n  \"author\": \"ryan\"\n}","exitCode":0,"duration":300}}],"startSeq":6,"endSeq":7,"startTime":1710000003200,"endTime":1710000003500,"duration":300,"toolCallsCount":1,"hasError":false,"tokens":{"input":0,"output":0,"total":0}},{"stepIndex":5,"title":"Assistant Response","events":[{"seq":8,"ts":1710000004500,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"配置文件检查完毕，项目名称为 dsh-replay (v1.0.0)。","tokens":{"input":350,"output":30,"total":380},"raw":{"seq":8,"ts":1710000004500,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"配置文件检查完毕，项目名称为 dsh-replay (v1.0.0)。","tokens":{"input":350,"output":30,"total":380}}}],"startSeq":8,"endSeq":8,"startTime":1710000004500,"endTime":1710000004500,"duration":0,"toolCallsCount":0,"hasError":false,"tokens":{"input":0,"output":0,"total":0}}],"events":[{"seq":1,"ts":1710000000000,"type":"user_message","role":"user","content":"请帮我检查项目目录中的配置文件，并统计代码行数","raw":{"seq":1,"ts":1710000000000,"type":"user","role":"user","content":"请帮我检查项目目录中的配置文件，并统计代码行数","session_id":"dsh-session-20260913-abc1"}},{"seq":2,"ts":1710000001200,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"用户要求检查项目目录中的配置文件并统计代码行数。\n首先我应该查看当前目录下的文件列表，确定配置文件名称。我将使用 shell.exec 执行目录查看命令。","tokens":{"input":120,"output":80,"total":200},"duration":1200,"raw":{"seq":2,"ts":1710000001200,"type":"reasoning","role":"assistant","model":"deepseek-r1","content":"用户要求检查项目目录中的配置文件并统计代码行数。\n首先我应该查看当前目录下的文件列表，确定配置文件名称。我将使用 shell.exec 执行目录查看命令。","duration":1200,"tokens":{"input":120,"output":80,"total":200}}},{"seq":3,"ts":1710000001500,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"shell.exec","toolCallId":"call_001","args":{"command":"dir /b","timeout":5000},"tokens":{"input":200,"output":25,"total":225},"raw":{"seq":3,"ts":1710000001500,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"shell.exec","toolCallId":"call_001","args":{"command":"dir /b","timeout":5000},"tokens":{"input":200,"output":25,"total":225}}},{"seq":4,"ts":1710000002100,"type":"tool_result","role":"tool","toolName":"shell.exec","toolCallId":"call_001","result":"package.json\nsrc\ntsconfig.json\nREADME.md\nAPI_KEY=********","exitCode":0,"content":"package.json\nsrc\ntsconfig.json\nREADME.md\nAPI_KEY=********","duration":600,"parentSeq":3,"raw":{"seq":4,"ts":1710000002100,"type":"tool_result","role":"tool","toolName":"shell.exec","toolCallId":"call_001","result":"package.json\nsrc\ntsconfig.json\nREADME.md\nAPI_KEY=********","exitCode":0,"duration":600}},{"seq":5,"ts":1710000003000,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"项目根目录下包含 package.json, src, tsconfig.json 等关键文件。接下来我将读取 package.json 的配置信息。","tokens":{"input":260,"output":45,"total":305},"raw":{"seq":5,"ts":1710000003000,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"项目根目录下包含 package.json, src, tsconfig.json 等关键文件。接下来我将读取 package.json 的配置信息。","tokens":{"input":260,"output":45,"total":305}}},{"seq":6,"ts":1710000003200,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"file.read","toolCallId":"call_002","args":{"path":"~\\Desktop\\dsh-replay\\package.json"},"tokens":{"input":310,"output":20,"total":330},"raw":{"seq":6,"ts":1710000003200,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"file.read","toolCallId":"call_002","args":{"path":"~\\Desktop\\dsh-replay\\package.json"},"tokens":{"input":310,"output":20,"total":330}}},{"seq":7,"ts":1710000003500,"type":"tool_result","role":"tool","toolName":"file.read","toolCallId":"call_002","result":"{\n  \"name\": \"dsh-replay\",\n  \"version\": \"1.0.0\",\n  \"author\": \"ryan\"\n}","exitCode":0,"content":"{\n  \"name\": \"dsh-replay\",\n  \"version\": \"1.0.0\",\n  \"author\": \"ryan\"\n}","duration":300,"parentSeq":6,"raw":{"seq":7,"ts":1710000003500,"type":"tool_result","role":"tool","toolName":"file.read","toolCallId":"call_002","result":"{\n  \"name\": \"dsh-replay\",\n  \"version\": \"1.0.0\",\n  \"author\": \"ryan\"\n}","exitCode":0,"duration":300}},{"seq":8,"ts":1710000004500,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"配置文件检查完毕，项目名称为 dsh-replay (v1.0.0)。","tokens":{"input":350,"output":30,"total":380},"raw":{"seq":8,"ts":1710000004500,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"配置文件检查完毕，项目名称为 dsh-replay (v1.0.0)。","tokens":{"input":350,"output":30,"total":380}}}],"startSeq":1,"endSeq":8,"startTime":1710000000000,"endTime":1710000004500,"duration":4500,"totalTokens":{"input":1240,"output":200,"total":1440},"toolsUsed":["shell.exec","file.read"],"status":"success"},{"turnIndex":2,"userPrompt":"请帮我清理根目录下的临时日志文件 temp.log","steps":[{"stepIndex":1,"title":"User Input","events":[{"seq":9,"ts":1710000010000,"type":"user_message","role":"user","content":"请帮我清理根目录下的临时日志文件 temp.log","raw":{"seq":9,"ts":1710000010000,"type":"user","role":"user","content":"请帮我清理根目录下的临时日志文件 temp.log"}},{"seq":10,"ts":1710000011000,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"用户要求删除文件 temp.log。在 DSH 规范中，破坏性文件删除需要发起用户审批请求。","tokens":{"input":420,"output":50,"total":470},"duration":1000,"raw":{"seq":10,"ts":1710000011000,"type":"reasoning","role":"assistant","model":"deepseek-r1","content":"用户要求删除文件 temp.log。在 DSH 规范中，破坏性文件删除需要发起用户审批请求。","duration":1000,"tokens":{"input":420,"output":50,"total":470}}}],"startSeq":9,"endSeq":10,"startTime":1710000010000,"endTime":1710000011000,"duration":1000,"toolCallsCount":0,"hasError":false,"tokens":{"input":420,"output":50,"total":470}},{"stepIndex":2,"title":"Approval Request","events":[{"seq":11,"ts":1710000011500,"type":"approval_request","role":"system","content":"请求删除敏感文件: temp.log","args":{"action":"file.delete","target":"~\\Desktop\\dsh-replay\\temp.log","riskLevel":"medium"},"raw":{"seq":11,"ts":1710000011500,"type":"approval_request","role":"system","content":"请求删除敏感文件: temp.log","args":{"action":"file.delete","target":"~\\Desktop\\dsh-replay\\temp.log","riskLevel":"medium"}}},{"seq":12,"ts":1710000015000,"type":"approval_result","role":"user","content":"用户已批准删除操作","result":{"approved":true,"operator":"admin"},"raw":{"seq":12,"ts":1710000015000,"type":"approval_result","role":"user","content":"用户已批准删除操作","result":{"approved":true,"operator":"admin"}}}],"startSeq":11,"endSeq":12,"startTime":1710000011500,"endTime":1710000015000,"duration":3500,"toolCallsCount":0,"hasError":false,"tokens":{"input":0,"output":0,"total":0}},{"stepIndex":3,"title":"Tool: shell.exec","events":[{"seq":13,"ts":1710000015500,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"shell.exec","toolCallId":"call_003","args":{"command":"rm temp.log"},"tokens":{"input":510,"output":20,"total":530},"raw":{"seq":13,"ts":1710000015500,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"shell.exec","toolCallId":"call_003","args":{"command":"rm temp.log"},"tokens":{"input":510,"output":20,"total":530}}},{"seq":14,"ts":1710000016000,"type":"tool_result","role":"tool","toolName":"shell.exec","toolCallId":"call_003","result":"File temp.log removed successfully.","exitCode":0,"content":"File temp.log removed successfully.","duration":500,"parentSeq":13,"raw":{"seq":14,"ts":1710000016000,"type":"tool_result","role":"tool","toolName":"shell.exec","toolCallId":"call_003","result":"File temp.log removed successfully.","exitCode":0,"duration":500}}],"startSeq":13,"endSeq":14,"startTime":1710000015500,"endTime":1710000016000,"duration":500,"toolCallsCount":1,"hasError":false,"tokens":{"input":0,"output":0,"total":0}},{"stepIndex":4,"title":"Assistant Response","events":[{"seq":15,"ts":1710000017000,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"已完成审批并成功删除了 temp.log 文件。","tokens":{"input":540,"output":25,"total":565},"raw":{"seq":15,"ts":1710000017000,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"已完成审批并成功删除了 temp.log 文件。","tokens":{"input":540,"output":25,"total":565}}}],"startSeq":15,"endSeq":15,"startTime":1710000017000,"endTime":1710000017000,"duration":0,"toolCallsCount":0,"hasError":false,"tokens":{"input":0,"output":0,"total":0}}],"events":[{"seq":9,"ts":1710000010000,"type":"user_message","role":"user","content":"请帮我清理根目录下的临时日志文件 temp.log","raw":{"seq":9,"ts":1710000010000,"type":"user","role":"user","content":"请帮我清理根目录下的临时日志文件 temp.log"}},{"seq":10,"ts":1710000011000,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"用户要求删除文件 temp.log。在 DSH 规范中，破坏性文件删除需要发起用户审批请求。","tokens":{"input":420,"output":50,"total":470},"duration":1000,"raw":{"seq":10,"ts":1710000011000,"type":"reasoning","role":"assistant","model":"deepseek-r1","content":"用户要求删除文件 temp.log。在 DSH 规范中，破坏性文件删除需要发起用户审批请求。","duration":1000,"tokens":{"input":420,"output":50,"total":470}}},{"seq":11,"ts":1710000011500,"type":"approval_request","role":"system","content":"请求删除敏感文件: temp.log","args":{"action":"file.delete","target":"~\\Desktop\\dsh-replay\\temp.log","riskLevel":"medium"},"raw":{"seq":11,"ts":1710000011500,"type":"approval_request","role":"system","content":"请求删除敏感文件: temp.log","args":{"action":"file.delete","target":"~\\Desktop\\dsh-replay\\temp.log","riskLevel":"medium"}}},{"seq":12,"ts":1710000015000,"type":"approval_result","role":"user","content":"用户已批准删除操作","result":{"approved":true,"operator":"admin"},"raw":{"seq":12,"ts":1710000015000,"type":"approval_result","role":"user","content":"用户已批准删除操作","result":{"approved":true,"operator":"admin"}}},{"seq":13,"ts":1710000015500,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"shell.exec","toolCallId":"call_003","args":{"command":"rm temp.log"},"tokens":{"input":510,"output":20,"total":530},"raw":{"seq":13,"ts":1710000015500,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"shell.exec","toolCallId":"call_003","args":{"command":"rm temp.log"},"tokens":{"input":510,"output":20,"total":530}}},{"seq":14,"ts":1710000016000,"type":"tool_result","role":"tool","toolName":"shell.exec","toolCallId":"call_003","result":"File temp.log removed successfully.","exitCode":0,"content":"File temp.log removed successfully.","duration":500,"parentSeq":13,"raw":{"seq":14,"ts":1710000016000,"type":"tool_result","role":"tool","toolName":"shell.exec","toolCallId":"call_003","result":"File temp.log removed successfully.","exitCode":0,"duration":500}},{"seq":15,"ts":1710000017000,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"已完成审批并成功删除了 temp.log 文件。","tokens":{"input":540,"output":25,"total":565},"raw":{"seq":15,"ts":1710000017000,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"已完成审批并成功删除了 temp.log 文件。","tokens":{"input":540,"output":25,"total":565}}}],"startSeq":9,"endSeq":15,"startTime":1710000010000,"endTime":1710000017000,"duration":7000,"totalTokens":{"input":1470,"output":95,"total":1565},"toolsUsed":["shell.exec"],"status":"success"},{"turnIndex":3,"userPrompt":"请尝试连接测试数据库","steps":[{"stepIndex":1,"title":"User Input","events":[{"seq":16,"ts":1710000020000,"type":"user_message","role":"user","content":"请尝试连接测试数据库","raw":{"seq":16,"ts":1710000020000,"type":"user","role":"user","content":"请尝试连接测试数据库"}}],"startSeq":16,"endSeq":16,"startTime":1710000020000,"endTime":1710000020000,"duration":0,"toolCallsCount":0,"hasError":false,"tokens":{"input":0,"output":0,"total":0}},{"stepIndex":2,"title":"Tool: db.connect","events":[{"seq":17,"ts":1710000021000,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"db.connect","toolCallId":"call_004","args":{"host":"127.0.0.1","port":5432,"password":"SuperSecretPassword999!"},"tokens":{"input":580,"output":30,"total":610},"raw":{"seq":17,"ts":1710000021000,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"db.connect","toolCallId":"call_004","args":{"host":"127.0.0.1","port":5432,"password":"SuperSecretPassword999!"},"tokens":{"input":580,"output":30,"total":610}}},{"seq":18,"ts":1710000022000,"type":"tool_result","role":"tool","toolName":"db.connect","toolCallId":"call_004","result":"Connection refused: ECONNREFUSED 127.0.0.1:5432","exitCode":1,"content":"Connection refused: ECONNREFUSED 127.0.0.1:5432","duration":1000,"parentSeq":17,"raw":{"seq":18,"ts":1710000022000,"type":"tool_result","role":"tool","toolName":"db.connect","toolCallId":"call_004","result":"Connection refused: ECONNREFUSED 127.0.0.1:5432","exitCode":1,"duration":1000}}],"startSeq":17,"endSeq":18,"startTime":1710000021000,"endTime":1710000022000,"duration":1000,"toolCallsCount":1,"hasError":false,"tokens":{"input":0,"output":0,"total":0}},{"stepIndex":3,"title":"Error: Connection refused: ECONNREFUS","events":[{"seq":19,"ts":1710000022200,"type":"error","role":"assistant","content":"Connection refused: ECONNREFUSED 127.0.0.1:5432","error":{"message":"Connection refused: ECONNREFUSED 127.0.0.1:5432","stack":"Error: connect ECONNREFUSED 127.0.0.1:5432\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1605:16)\n    at Protocol.handshake (/app/node_modules/pg/lib/connection.js:120:10)","code":"ECONNREFUSED"},"raw":{"seq":19,"ts":1710000022200,"type":"error","role":"assistant","content":"数据库连接失败","error":{"message":"Connection refused: ECONNREFUSED 127.0.0.1:5432","code":"ECONNREFUSED","stack":"Error: connect ECONNREFUSED 127.0.0.1:5432\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1605:16)\n    at Protocol.handshake (/app/node_modules/pg/lib/connection.js:120:10)"}}},{"seq":20,"ts":1710000023500,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"连接测试数据库失败：ECONNREFUSED 127.0.0.1:5432。请检查本地 PostgreSQL 服务是否已启动。","tokens":{"input":650,"output":50,"total":700},"raw":{"seq":20,"ts":1710000023500,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"连接测试数据库失败：ECONNREFUSED 127.0.0.1:5432。请检查本地 PostgreSQL 服务是否已启动。","tokens":{"input":650,"output":50,"total":700}}}],"startSeq":19,"endSeq":20,"startTime":1710000022200,"endTime":1710000023500,"duration":1300,"toolCallsCount":0,"hasError":true,"tokens":{"input":650,"output":50,"total":700}}],"events":[{"seq":16,"ts":1710000020000,"type":"user_message","role":"user","content":"请尝试连接测试数据库","raw":{"seq":16,"ts":1710000020000,"type":"user","role":"user","content":"请尝试连接测试数据库"}},{"seq":17,"ts":1710000021000,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"db.connect","toolCallId":"call_004","args":{"host":"127.0.0.1","port":5432,"password":"SuperSecretPassword999!"},"tokens":{"input":580,"output":30,"total":610},"raw":{"seq":17,"ts":1710000021000,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"db.connect","toolCallId":"call_004","args":{"host":"127.0.0.1","port":5432,"password":"SuperSecretPassword999!"},"tokens":{"input":580,"output":30,"total":610}}},{"seq":18,"ts":1710000022000,"type":"tool_result","role":"tool","toolName":"db.connect","toolCallId":"call_004","result":"Connection refused: ECONNREFUSED 127.0.0.1:5432","exitCode":1,"content":"Connection refused: ECONNREFUSED 127.0.0.1:5432","duration":1000,"parentSeq":17,"raw":{"seq":18,"ts":1710000022000,"type":"tool_result","role":"tool","toolName":"db.connect","toolCallId":"call_004","result":"Connection refused: ECONNREFUSED 127.0.0.1:5432","exitCode":1,"duration":1000}},{"seq":19,"ts":1710000022200,"type":"error","role":"assistant","content":"Connection refused: ECONNREFUSED 127.0.0.1:5432","error":{"message":"Connection refused: ECONNREFUSED 127.0.0.1:5432","stack":"Error: connect ECONNREFUSED 127.0.0.1:5432\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1605:16)\n    at Protocol.handshake (/app/node_modules/pg/lib/connection.js:120:10)","code":"ECONNREFUSED"},"raw":{"seq":19,"ts":1710000022200,"type":"error","role":"assistant","content":"数据库连接失败","error":{"message":"Connection refused: ECONNREFUSED 127.0.0.1:5432","code":"ECONNREFUSED","stack":"Error: connect ECONNREFUSED 127.0.0.1:5432\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1605:16)\n    at Protocol.handshake (/app/node_modules/pg/lib/connection.js:120:10)"}}},{"seq":20,"ts":1710000023500,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"连接测试数据库失败：ECONNREFUSED 127.0.0.1:5432。请检查本地 PostgreSQL 服务是否已启动。","tokens":{"input":650,"output":50,"total":700},"raw":{"seq":20,"ts":1710000023500,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"连接测试数据库失败：ECONNREFUSED 127.0.0.1:5432。请检查本地 PostgreSQL 服务是否已启动。","tokens":{"input":650,"output":50,"total":700}}}],"startSeq":16,"endSeq":20,"startTime":1710000020000,"endTime":1710000023500,"duration":3500,"totalTokens":{"input":1230,"output":80,"total":1310},"toolsUsed":["db.connect"],"status":"error"}],"allEvents":[{"seq":1,"ts":1710000000000,"type":"user_message","role":"user","content":"请帮我检查项目目录中的配置文件，并统计代码行数","raw":{"seq":1,"ts":1710000000000,"type":"user","role":"user","content":"请帮我检查项目目录中的配置文件，并统计代码行数","session_id":"dsh-session-20260913-abc1"}},{"seq":2,"ts":1710000001200,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"用户要求检查项目目录中的配置文件并统计代码行数。\n首先我应该查看当前目录下的文件列表，确定配置文件名称。我将使用 shell.exec 执行目录查看命令。","tokens":{"input":120,"output":80,"total":200},"duration":1200,"raw":{"seq":2,"ts":1710000001200,"type":"reasoning","role":"assistant","model":"deepseek-r1","content":"用户要求检查项目目录中的配置文件并统计代码行数。\n首先我应该查看当前目录下的文件列表，确定配置文件名称。我将使用 shell.exec 执行目录查看命令。","duration":1200,"tokens":{"input":120,"output":80,"total":200}}},{"seq":3,"ts":1710000001500,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"shell.exec","toolCallId":"call_001","args":{"command":"dir /b","timeout":5000},"tokens":{"input":200,"output":25,"total":225},"raw":{"seq":3,"ts":1710000001500,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"shell.exec","toolCallId":"call_001","args":{"command":"dir /b","timeout":5000},"tokens":{"input":200,"output":25,"total":225}}},{"seq":4,"ts":1710000002100,"type":"tool_result","role":"tool","toolName":"shell.exec","toolCallId":"call_001","result":"package.json\nsrc\ntsconfig.json\nREADME.md\nAPI_KEY=********","exitCode":0,"content":"package.json\nsrc\ntsconfig.json\nREADME.md\nAPI_KEY=********","duration":600,"parentSeq":3,"raw":{"seq":4,"ts":1710000002100,"type":"tool_result","role":"tool","toolName":"shell.exec","toolCallId":"call_001","result":"package.json\nsrc\ntsconfig.json\nREADME.md\nAPI_KEY=********","exitCode":0,"duration":600}},{"seq":5,"ts":1710000003000,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"项目根目录下包含 package.json, src, tsconfig.json 等关键文件。接下来我将读取 package.json 的配置信息。","tokens":{"input":260,"output":45,"total":305},"raw":{"seq":5,"ts":1710000003000,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"项目根目录下包含 package.json, src, tsconfig.json 等关键文件。接下来我将读取 package.json 的配置信息。","tokens":{"input":260,"output":45,"total":305}}},{"seq":6,"ts":1710000003200,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"file.read","toolCallId":"call_002","args":{"path":"~\\Desktop\\dsh-replay\\package.json"},"tokens":{"input":310,"output":20,"total":330},"raw":{"seq":6,"ts":1710000003200,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"file.read","toolCallId":"call_002","args":{"path":"~\\Desktop\\dsh-replay\\package.json"},"tokens":{"input":310,"output":20,"total":330}}},{"seq":7,"ts":1710000003500,"type":"tool_result","role":"tool","toolName":"file.read","toolCallId":"call_002","result":"{\n  \"name\": \"dsh-replay\",\n  \"version\": \"1.0.0\",\n  \"author\": \"ryan\"\n}","exitCode":0,"content":"{\n  \"name\": \"dsh-replay\",\n  \"version\": \"1.0.0\",\n  \"author\": \"ryan\"\n}","duration":300,"parentSeq":6,"raw":{"seq":7,"ts":1710000003500,"type":"tool_result","role":"tool","toolName":"file.read","toolCallId":"call_002","result":"{\n  \"name\": \"dsh-replay\",\n  \"version\": \"1.0.0\",\n  \"author\": \"ryan\"\n}","exitCode":0,"duration":300}},{"seq":8,"ts":1710000004500,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"配置文件检查完毕，项目名称为 dsh-replay (v1.0.0)。","tokens":{"input":350,"output":30,"total":380},"raw":{"seq":8,"ts":1710000004500,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"配置文件检查完毕，项目名称为 dsh-replay (v1.0.0)。","tokens":{"input":350,"output":30,"total":380}}},{"seq":9,"ts":1710000010000,"type":"user_message","role":"user","content":"请帮我清理根目录下的临时日志文件 temp.log","raw":{"seq":9,"ts":1710000010000,"type":"user","role":"user","content":"请帮我清理根目录下的临时日志文件 temp.log"}},{"seq":10,"ts":1710000011000,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"用户要求删除文件 temp.log。在 DSH 规范中，破坏性文件删除需要发起用户审批请求。","tokens":{"input":420,"output":50,"total":470},"duration":1000,"raw":{"seq":10,"ts":1710000011000,"type":"reasoning","role":"assistant","model":"deepseek-r1","content":"用户要求删除文件 temp.log。在 DSH 规范中，破坏性文件删除需要发起用户审批请求。","duration":1000,"tokens":{"input":420,"output":50,"total":470}}},{"seq":11,"ts":1710000011500,"type":"approval_request","role":"system","content":"请求删除敏感文件: temp.log","args":{"action":"file.delete","target":"~\\Desktop\\dsh-replay\\temp.log","riskLevel":"medium"},"raw":{"seq":11,"ts":1710000011500,"type":"approval_request","role":"system","content":"请求删除敏感文件: temp.log","args":{"action":"file.delete","target":"~\\Desktop\\dsh-replay\\temp.log","riskLevel":"medium"}}},{"seq":12,"ts":1710000015000,"type":"approval_result","role":"user","content":"用户已批准删除操作","result":{"approved":true,"operator":"admin"},"raw":{"seq":12,"ts":1710000015000,"type":"approval_result","role":"user","content":"用户已批准删除操作","result":{"approved":true,"operator":"admin"}}},{"seq":13,"ts":1710000015500,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"shell.exec","toolCallId":"call_003","args":{"command":"rm temp.log"},"tokens":{"input":510,"output":20,"total":530},"raw":{"seq":13,"ts":1710000015500,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"shell.exec","toolCallId":"call_003","args":{"command":"rm temp.log"},"tokens":{"input":510,"output":20,"total":530}}},{"seq":14,"ts":1710000016000,"type":"tool_result","role":"tool","toolName":"shell.exec","toolCallId":"call_003","result":"File temp.log removed successfully.","exitCode":0,"content":"File temp.log removed successfully.","duration":500,"parentSeq":13,"raw":{"seq":14,"ts":1710000016000,"type":"tool_result","role":"tool","toolName":"shell.exec","toolCallId":"call_003","result":"File temp.log removed successfully.","exitCode":0,"duration":500}},{"seq":15,"ts":1710000017000,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"已完成审批并成功删除了 temp.log 文件。","tokens":{"input":540,"output":25,"total":565},"raw":{"seq":15,"ts":1710000017000,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"已完成审批并成功删除了 temp.log 文件。","tokens":{"input":540,"output":25,"total":565}}},{"seq":16,"ts":1710000020000,"type":"user_message","role":"user","content":"请尝试连接测试数据库","raw":{"seq":16,"ts":1710000020000,"type":"user","role":"user","content":"请尝试连接测试数据库"}},{"seq":17,"ts":1710000021000,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"db.connect","toolCallId":"call_004","args":{"host":"127.0.0.1","port":5432,"password":"SuperSecretPassword999!"},"tokens":{"input":580,"output":30,"total":610},"raw":{"seq":17,"ts":1710000021000,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"db.connect","toolCallId":"call_004","args":{"host":"127.0.0.1","port":5432,"password":"SuperSecretPassword999!"},"tokens":{"input":580,"output":30,"total":610}}},{"seq":18,"ts":1710000022000,"type":"tool_result","role":"tool","toolName":"db.connect","toolCallId":"call_004","result":"Connection refused: ECONNREFUSED 127.0.0.1:5432","exitCode":1,"content":"Connection refused: ECONNREFUSED 127.0.0.1:5432","duration":1000,"parentSeq":17,"raw":{"seq":18,"ts":1710000022000,"type":"tool_result","role":"tool","toolName":"db.connect","toolCallId":"call_004","result":"Connection refused: ECONNREFUSED 127.0.0.1:5432","exitCode":1,"duration":1000}},{"seq":19,"ts":1710000022200,"type":"error","role":"assistant","content":"Connection refused: ECONNREFUSED 127.0.0.1:5432","error":{"message":"Connection refused: ECONNREFUSED 127.0.0.1:5432","stack":"Error: connect ECONNREFUSED 127.0.0.1:5432\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1605:16)\n    at Protocol.handshake (/app/node_modules/pg/lib/connection.js:120:10)","code":"ECONNREFUSED"},"raw":{"seq":19,"ts":1710000022200,"type":"error","role":"assistant","content":"数据库连接失败","error":{"message":"Connection refused: ECONNREFUSED 127.0.0.1:5432","code":"ECONNREFUSED","stack":"Error: connect ECONNREFUSED 127.0.0.1:5432\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1605:16)\n    at Protocol.handshake (/app/node_modules/pg/lib/connection.js:120:10)"}}},{"seq":20,"ts":1710000023500,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"连接测试数据库失败：ECONNREFUSED 127.0.0.1:5432。请检查本地 PostgreSQL 服务是否已启动。","tokens":{"input":650,"output":50,"total":700},"raw":{"seq":20,"ts":1710000023500,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"连接测试数据库失败：ECONNREFUSED 127.0.0.1:5432。请检查本地 PostgreSQL 服务是否已启动。","tokens":{"input":650,"output":50,"total":700}}}],"totalEvents":20,"totalTurns":3,"totalSteps":12,"totalTokens":{"input":3940,"output":375,"total":4315},"toolsSummary":{"shell.exec":2,"file.read":1,"db.connect":1},"forks":[],"hasError":true,"sourceFileName":"sample-session.jsonl.zstd"};
+</script>
+<script>
+// dsh-replay Web Client Application
+
+// --- i18n Dictionaries ---
+const I18N = {
+  zh: {
+    open: '打开日志',
+    export: '导出分享',
+    search_placeholder: '搜索内容、参数或结果 (按 / 聚焦)...',
+    filter_all: '全部',
+    filter_tool: '工具调用',
+    filter_error: '错误',
+    filter_reasoning: '推理',
+    filter_user: '用户输入',
+    all_tools: '所有工具',
+    session_tree: '会话轮次 (Turns)',
+    timeline: '执行时间线 (Timeline)',
+    tab_formatted: '格式化视图',
+    tab_raw: '原始 JSON',
+    no_session: '暂未加载会话日志',
+    drag_hint: '请拖入 session.jsonl / .zstd 文件或点击上方打开',
+    select_event_hint: '在时间线中点击事件查看详情',
+    export_modal_title: '导出独立离线 HTML 回放文件',
+    export_desc: '导出的单文件 HTML 内嵌了完整交互式回放器和会话数据，接收方用任何浏览器均可直接双击打开离线浏览。',
+    privacy_options: '隐私脱敏选项',
+    mask_keys: '脱敏 API 密钥 (OpenAI, DeepSeek, Bearer, Token 等)',
+    mask_env: '脱敏环境变量与敏感配置 (PASSWORD, SECRET, KEY 等)',
+    mask_paths: '脱敏用户家目录路径 (替换系统用户名路径为 ~)',
+    custom_regex: '自定义脱敏正则 (可选)',
+    preview_diff: '脱敏效果实时预览',
+    preview_before: '原始数据片段:',
+    preview_after: '脱敏后数据片段:',
+    cancel: '取消',
+    download_html: '📥 下载离线 HTML',
+    copied: '已复制!',
+    copy: '复制',
+    jump_to_call: '跳转到调用 #',
+    unknown_tool: '未知工具',
+    duration: '耗时',
+    tokens: 'Tokens',
+    model: '模型',
+    exit_code: '退出码',
+    stack_trace: '错误堆栈',
+    reasoning_block: '思考与推理链 (Thinking)',
+    tool_parameters: '工具入参 (Arguments)',
+    tool_output: '工具输出 (Result)',
+    user_prompt: '用户指令',
+    assistant_reply: '助手响应',
+    expand_reasoning: '▼ 展开思维链',
+    collapse_reasoning: '▲ 折叠思维链'
+  },
+  en: {
+    open: 'Open Log',
+    export: 'Export & Share',
+    search_placeholder: 'Search content, args or result (press /)...',
+    filter_all: 'All',
+    filter_tool: 'Tools',
+    filter_error: 'Errors',
+    filter_reasoning: 'Reasoning',
+    filter_user: 'User Prompts',
+    all_tools: 'All Tools',
+    session_tree: 'Session Turns',
+    timeline: 'Timeline Stream',
+    tab_formatted: 'Formatted',
+    tab_raw: 'Raw JSON',
+    no_session: 'No session loaded',
+    drag_hint: 'Drag & drop session.jsonl / .zstd file here or click Open',
+    select_event_hint: 'Click an event in the timeline to view details',
+    export_modal_title: 'Export Standalone Replay HTML',
+    export_desc: 'The exported single-file HTML embeds the complete viewer and session data. Anyone can open it offline in any browser.',
+    privacy_options: 'Privacy & Desensitization',
+    mask_keys: 'Mask API keys (OpenAI, DeepSeek, Bearer, tokens, etc.)',
+    mask_env: 'Mask environment variables & secrets (PASSWORD, SECRET, etc.)',
+    mask_paths: 'Mask user home paths (replace with ~)',
+    custom_regex: 'Custom Mask Regex (Optional)',
+    preview_diff: 'Desensitization Preview',
+    preview_before: 'Original Data:',
+    preview_after: 'Masked Data:',
+    cancel: 'Cancel',
+    download_html: '📥 Download HTML',
+    copied: 'Copied!',
+    copy: 'Copy',
+    jump_to_call: 'Jump to Call #',
+    unknown_tool: 'Unknown Tool',
+    duration: 'Duration',
+    tokens: 'Tokens',
+    model: 'Model',
+    exit_code: 'Exit Code',
+    stack_trace: 'Stack Trace',
+    reasoning_block: 'Reasoning & Thinking Chain',
+    tool_parameters: 'Tool Parameters',
+    tool_output: 'Tool Output',
+    user_prompt: 'User Prompt',
+    assistant_reply: 'Assistant Reply',
+    expand_reasoning: '▼ Expand Thinking',
+    collapse_reasoning: '▲ Collapse Thinking'
+  }
+}
+
+// --- Application State ---
+const state = {
+  lang: 'zh',
+  theme: 'dark',
+  session: null,
+  activeEvents: [],
+  currentFrame: 0,
+  isPlaying: false,
+  speed: 1,
+  playTimer: null,
+  selectedSeq: null,
+  activeTab: 'formatted',
+  filterType: 'all',
+  toolFilter: '',
+  searchQuery: '',
+  isRegex: false,
+  expandedReasonings: new Set()
+}
+
+// --- Masker (Client-side implementation) ---
+function maskStringClient(text, opts) {
+  if (!text || typeof text !== 'string') return text
+  let s = text
+  if (opts.maskApiKeys) {
+    s = s.replace(/sk-[A-Za-z0-9_-]{16,}/g, 'sk-***[MASKED_KEY]')
+    s = s.replace(/AIza[0-9A-Za-z-_]{35}/g, 'AIza***[MASKED_KEY]')
+    s = s.replace(/Bearer\s+[A-Za-z0-9._~+/-]{20,}/gi, 'Bearer [MASKED_TOKEN]')
+    s = s.replace(/ghp_[A-Za-z0-9]{36}/g, 'ghp_***[MASKED_TOKEN]')
+    s = s.replace(/glpat-[A-Za-z0-9-]{20,}/g, 'glpat-***[MASKED_TOKEN]')
+    s = s.replace(/eyJh[A-Za-z0-9_-]{10,}\.eyJh[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g, '[JWT_MASKED]')
+  }
+  if (opts.maskEnvVars) {
+    s = s.replace(/(?<=^|[\s,;])([A-Za-z0-9_]*(?:PASSWORD|SECRET|KEY|TOKEN|AUTH|CREDENTIAL)[A-Za-z0-9_]*\s*=\s*)([^\s;,]+)/gi, '$1********')
+    s = s.replace(/(["'](?:password|secret|apiKey|api_key|token|auth_token|access_token|private_key)["']\s*:\s*["'])([^"']+)(["'])/gi, '$1********$3')
+  }
+  if (opts.maskPaths) {
+    s = s.replace(/[A-Za-z]:\\[Uu]sers\\[^\\]+/g, '~')
+    s = s.replace(/(?:\/Users|\/home)\/[^/\s"']+/g, '~')
+  }
+  if (opts.customRegex && opts.customRegex.trim()) {
+    try {
+      s = s.replace(new RegExp(opts.customRegex, 'g'), '[MASKED]')
+    } catch (_) {}
+  }
+  return s
+}
+
+function maskObjectClient(data, opts) {
+  if (data === null || data === undefined) return data
+  if (typeof data === 'string') return maskStringClient(data, opts)
+  if (Array.isArray(data)) return data.map(item => maskObjectClient(item, opts))
+  if (typeof data === 'object') {
+    const res = {}
+    for (const [k, v] of Object.entries(data)) {
+      res[k] = maskObjectClient(v, opts)
+    }
+    return res
+  }
+  return data
+}
+
+// --- DOM Elements ---
+const dom = {
+  metaSessionId: document.getElementById('meta-session-id'),
+  metaCounts: document.getElementById('meta-counts'),
+  metaDuration: document.getElementById('meta-duration'),
+  metaTokens: document.getElementById('meta-tokens'),
+  btnOpen: document.getElementById('btn-open'),
+  fileInput: document.getElementById('file-input'),
+  btnExportModal: document.getElementById('btn-export-modal'),
+  btnLang: document.getElementById('btn-lang'),
+  langLabel: document.getElementById('lang-label'),
+  btnTheme: document.getElementById('btn-theme'),
+  btnPrev: document.getElementById('btn-prev'),
+  btnPlay: document.getElementById('btn-play'),
+  btnNext: document.getElementById('btn-next'),
+  speedSelect: document.getElementById('speed-select'),
+  currentFrameLabel: document.getElementById('current-frame-label'),
+  scrubber: document.getElementById('scrubber'),
+  seqInput: document.getElementById('seq-input'),
+  btnSeqGo: document.getElementById('btn-seq-go'),
+  searchInput: document.getElementById('search-input'),
+  btnRegex: document.getElementById('btn-regex'),
+  filterPills: document.getElementById('filter-pills'),
+  toolFilter: document.getElementById('tool-filter'),
+  sessionTree: document.getElementById('session-tree'),
+  timelineList: document.getElementById('timeline-list'),
+  turnCountBadge: document.getElementById('turn-count-badge'),
+  timelineCountBadge: document.getElementById('timeline-count-badge'),
+  tabFormatted: document.getElementById('tab-formatted'),
+  tabRaw: document.getElementById('tab-raw'),
+  inspectorContent: document.getElementById('inspector-content'),
+  exportModal: document.getElementById('export-modal'),
+  btnCloseModal: document.getElementById('btn-close-modal'),
+  btnCancelModal: document.getElementById('btn-cancel-modal'),
+  btnConfirmExport: document.getElementById('btn-confirm-export'),
+  maskApiKeys: document.getElementById('mask-api-keys'),
+  maskEnvVars: document.getElementById('mask-env-vars'),
+  maskPaths: document.getElementById('mask-paths'),
+  maskCustomRegex: document.getElementById('mask-custom-regex'),
+  diffBefore: document.getElementById('diff-before'),
+  diffAfter: document.getElementById('diff-after'),
+  dropOverlay: document.getElementById('drop-overlay')
+}
+
+// --- Helper Functions ---
+function t(key) {
+  return (I18N[state.lang] && I18N[state.lang][key]) || key
+}
+
+function updateI18nTexts() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n')
+    el.textContent = t(key)
+  })
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder')
+    el.placeholder = t(key)
+  })
+  dom.langLabel.textContent = state.lang === 'zh' ? 'EN' : '中文'
+}
+
+function escapeHtml(str) {
+  if (typeof str !== 'string') str = String(str ?? '')
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+function formatDuration(ms) {
+  if (!ms || isNaN(ms)) return '0ms'
+  if (ms < 1000) return `${Math.round(ms)}ms`
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
+  return `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}s`
+}
+
+function formatTokens(count) {
+  if (!count) return '0'
+  if (count > 1000000) return `${(count / 1000000).toFixed(1)}M`
+  if (count > 1000) return `${(count / 1000).toFixed(1)}k`
+  return String(count)
+}
+
+function syntaxHighlightJson(json) {
+  if (typeof json !== 'string') {
+    json = JSON.stringify(json, null, 2)
+  }
+  json = escapeHtml(json)
+  return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, match => {
+    let cls = 'color: #79c0ff;' // number
+    if (/^"/.test(match)) {
+      if (/:$/.test(match)) {
+        cls = 'color: #7ee787; font-weight: bold;' // key
+      } else {
+        cls = 'color: #a5d6ff;' // string
+      }
+    } else if (/true|false/.test(match)) {
+      cls = 'color: #ff7b72;' // boolean
+    } else if (/null/.test(match)) {
+      cls = 'color: #d2a8ff;' // null
+    }
+    return `<span style="${cls}">${match}</span>`
+  })
+}
+
+// --- App Initialization ---
+function init() {
+  bindEvents()
+  updateI18nTexts()
+
+  // Check if session data is preloaded (in standalone exported HTML)
+  if (window.__DSH_SESSION__) {
+    loadSession(window.__DSH_SESSION__)
+  }
+}
+
+// --- Event Listeners ---
+function bindEvents() {
+  // Lang switch
+  dom.btnLang.addEventListener('click', () => {
+    state.lang = state.lang === 'zh' ? 'en' : 'zh'
+    updateI18nTexts()
+    render()
+  })
+
+  // Theme switch
+  dom.btnTheme.addEventListener('click', () => {
+    state.theme = state.theme === 'dark' ? 'light' : 'dark'
+    document.documentElement.setAttribute('data-theme', state.theme)
+    dom.btnTheme.textContent = state.theme === 'dark' ? '🌙' : '☀️'
+  })
+
+  // File open
+  dom.btnOpen.addEventListener('click', () => dom.fileInput.click())
+  dom.fileInput.addEventListener('change', handleFileSelect)
+
+  // Drag & Drop
+  window.addEventListener('dragover', e => {
+    e.preventDefault()
+    dom.dropOverlay.classList.add('active')
+  })
+  window.addEventListener('dragleave', e => {
+    if (e.relatedTarget === null) dom.dropOverlay.classList.remove('active')
+  })
+  window.addEventListener('drop', e => {
+    e.preventDefault()
+    dom.dropOverlay.classList.remove('active')
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      loadFile(e.dataTransfer.files[0])
+    }
+  })
+
+  // Playback controls
+  dom.btnPlay.addEventListener('click', togglePlay)
+  dom.btnPrev.addEventListener('click', prevStep)
+  dom.btnNext.addEventListener('click', nextStep)
+  dom.speedSelect.addEventListener('change', e => {
+    state.speed = Number(e.target.value) || 1
+    if (state.isPlaying) {
+      stopPlay()
+      startPlay()
+    }
+  })
+  dom.scrubber.addEventListener('input', e => {
+    goToFrame(Number(e.target.value))
+  })
+  dom.btnSeqGo.addEventListener('click', () => {
+    const seq = Number(dom.seqInput.value)
+    if (!isNaN(seq)) jumpToSeq(seq)
+  })
+  dom.seqInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const seq = Number(dom.seqInput.value)
+      if (!isNaN(seq)) jumpToSeq(seq)
+    }
+  })
+
+  // Search and filter
+  dom.searchInput.addEventListener('input', e => {
+    state.searchQuery = e.target.value
+    applyFilters()
+  })
+  dom.btnRegex.addEventListener('click', () => {
+    state.isRegex = !state.isRegex
+    dom.btnRegex.classList.toggle('active', state.isRegex)
+    applyFilters()
+  })
+  dom.filterPills.addEventListener('click', e => {
+    const pill = e.target.closest('.pill')
+    if (!pill) return
+    dom.filterPills.querySelectorAll('.pill').forEach(p => p.classList.remove('active'))
+    pill.classList.add('active')
+    state.filterType = pill.getAttribute('data-filter')
+    applyFilters()
+  })
+  dom.toolFilter.addEventListener('change', e => {
+    state.toolFilter = e.target.value
+    applyFilters()
+  })
+
+  // Inspector tabs
+  dom.tabFormatted.addEventListener('click', () => {
+    state.activeTab = 'formatted'
+    dom.tabFormatted.classList.add('active')
+    dom.tabRaw.classList.remove('active')
+    renderInspector()
+  })
+  dom.tabRaw.addEventListener('click', () => {
+    state.activeTab = 'raw'
+    dom.tabRaw.classList.add('active')
+    dom.tabFormatted.classList.remove('active')
+    renderInspector()
+  })
+
+  // Export Modal
+  dom.btnExportModal.addEventListener('click', openExportModal)
+  dom.btnCloseModal.addEventListener('click', closeExportModal)
+  dom.btnCancelModal.addEventListener('click', closeExportModal)
+  dom.btnConfirmExport.addEventListener('click', executeExport)
+
+  dom.maskApiKeys.addEventListener('change', updateDiffPreview)
+  dom.maskEnvVars.addEventListener('change', updateDiffPreview)
+  dom.maskPaths.addEventListener('change', updateDiffPreview)
+  dom.maskCustomRegex.addEventListener('input', updateDiffPreview)
+
+  // Keyboard Shortcuts
+  window.addEventListener('keydown', e => {
+    // Avoid shortcuts if user is typing in an input
+    const tag = e.target.tagName.toLowerCase()
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') {
+      if (e.key === 'Escape') {
+        e.target.blur()
+      }
+      return
+    }
+
+    if (e.code === 'Space') {
+      e.preventDefault()
+      togglePlay()
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      prevStep()
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      nextStep()
+    } else if (e.key === 'j' || e.key === 'J') {
+      e.preventDefault()
+      jumpToolCall(1)
+    } else if (e.key === 'k' || e.key === 'K') {
+      e.preventDefault()
+      jumpToolCall(-1)
+    } else if (e.key === '/') {
+      e.preventDefault()
+      dom.searchInput.focus()
+      dom.searchInput.select()
+    } else if (e.key === 'Escape') {
+      closeExportModal()
+    }
+  })
+}
+
+// --- File Handling & Client-side Parsing ---
+function handleFileSelect(e) {
+  if (e.target.files && e.target.files[0]) {
+    loadFile(e.target.files[0])
+  }
+}
+
+async function loadFile(file) {
+  try {
+    const arrayBuffer = await file.arrayBuffer()
+    const u8 = new Uint8Array(arrayBuffer)
+    let text = ''
+
+    // Check Zstd magic: 0x28, 0xB5, 0x2F, 0xFD
+    if (u8.length >= 4 && u8[0] === 0x28 && u8[1] === 0xb5 && u8[2] === 0x2f && u8[3] === 0xfd) {
+      if (window.fzstd && typeof window.fzstd.decompress === 'function') {
+        const decompressed = window.fzstd.decompress(u8)
+        text = new TextDecoder('utf-8').decode(decompressed)
+      } else {
+        alert(state.lang === 'zh' ? '检测到 Zstandard 压缩文件，需要解压模块' : 'Zstandard file detected; decompressor needed')
+        return
+      }
+    } else {
+      text = new TextDecoder('utf-8').decode(u8)
+    }
+
+    const session = parseClientSession(text, file.name)
+    loadSession(session)
+  } catch (err) {
+    console.error('File load failed:', err)
+    alert((state.lang === 'zh' ? '解析日志失败: ' : 'Failed to parse log: ') + err.message)
+  }
+}
+
+function parseClientSession(text, fileName) {
+  const lines = text.split(/\r?\n/)
+  const rawEntries = []
+  for (const line of lines) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (typeof parsed === 'object' && parsed !== null) rawEntries.push(parsed)
+    } catch (_) {}
+  }
+
+  // Simplified in-browser tree builder
+  const events = []
+  rawEntries.forEach((entry, idx) => {
+    const seq = typeof entry.seq === 'number' ? entry.seq : idx + 1
+    let ts = Date.now()
+    if (entry.ts) ts = typeof entry.ts === 'number' ? entry.ts : Date.parse(entry.ts) || ts
+    else if (entry.timestamp) ts = typeof entry.timestamp === 'number' ? entry.timestamp : Date.parse(entry.timestamp) || ts
+
+    const rawRole = (entry.role || '').toLowerCase()
+    const rawType = (entry.type || '').toLowerCase()
+
+    let type = 'unknown'
+    if (rawRole === 'user' || rawType === 'user' || rawType === 'user_message') type = 'user_message'
+    else if (rawType === 'error' || entry.error) type = 'error'
+    else if (rawType === 'tool_call' || rawType === 'tool_use' || entry.tool_call || entry.tool_calls || (rawRole === 'assistant' && (entry.toolName || entry.tool))) type = 'tool_call'
+    else if (rawType === 'tool_result' || rawType === 'tool_return' || rawRole === 'tool' || (entry.result !== undefined && (entry.tool || entry.toolName))) type = 'tool_result'
+    else if (rawType === 'approval_request' || entry.approval_request) type = 'approval_request'
+    else if (rawType === 'approval_result' || entry.approval_result) type = 'approval_result'
+    else if (rawType === 'reasoning' || rawType === 'thinking') type = 'reasoning'
+    else if (rawRole === 'assistant' || rawType === 'assistant' || rawType === 'assistant_message') {
+      if ((entry.reasoning || entry.reasoning_content || entry.thinking) && !entry.content) type = 'reasoning'
+      else type = 'assistant_message'
+    }
+
+    const toolName = entry.toolName || entry.tool_name || entry.tool || (entry.tool_call && entry.tool_call.name) || (entry.tool_calls && entry.tool_calls[0] && entry.tool_calls[0].name)
+    const args = entry.arguments || entry.args || entry.parameters || (entry.tool_call && entry.tool_call.arguments) || (entry.tool_calls && entry.tool_calls[0] && entry.tool_calls[0].arguments)
+    const result = entry.result !== undefined ? entry.result : (entry.output ?? entry.response)
+    const exitCode = entry.exitCode ?? entry.exit_code ?? 0
+
+    let content = entry.content || entry.text || entry.message || ''
+    if (typeof content === 'object') content = JSON.stringify(content, null, 2)
+
+    events.push({
+      seq,
+      ts,
+      type,
+      role: rawRole || (type === 'user_message' ? 'user' : 'assistant'),
+      model: entry.model,
+      content,
+      toolName,
+      toolCallId: entry.toolCallId || entry.tool_call_id || entry.call_id,
+      args,
+      result,
+      exitCode,
+      error: entry.error ? (typeof entry.error === 'object' ? entry.error : { message: String(entry.error) }) : undefined,
+      tokens: entry.tokens || entry.usage,
+      duration: entry.duration || entry.duration_ms,
+      parentSeq: entry.parentSeq || entry.parent_seq,
+      raw: entry
+    })
+  })
+
+  // Build turns
+  const turns = []
+  let currentTurn = null
+  let currentStep = null
+
+  events.forEach(ev => {
+    if (ev.type === 'user_message' || !currentTurn) {
+      currentTurn = {
+        turnIndex: turns.length + 1,
+        userPrompt: ev.content || `Turn ${turns.length + 1}`,
+        steps: [],
+        events: [],
+        startTime: ev.ts,
+        endTime: ev.ts,
+        duration: 0,
+        toolsUsed: [],
+        totalTokens: { total: 0 }
+      }
+      turns.push(currentTurn)
+    }
+
+    currentTurn.events.push(ev)
+    currentTurn.endTime = Math.max(currentTurn.endTime, ev.ts)
+    if (ev.toolName && !currentTurn.toolsUsed.includes(ev.toolName)) {
+      currentTurn.toolsUsed.push(ev.toolName)
+    }
+
+    if (!currentStep || ev.type === 'tool_call' || ev.type === 'error' || ev.type === 'user_message') {
+      currentStep = {
+        stepIndex: currentTurn.steps.length + 1,
+        title: ev.type === 'tool_call' ? `Tool: ${ev.toolName}` : (ev.type === 'user_message' ? 'User Input' : (ev.type === 'error' ? 'Error' : `Step ${currentTurn.steps.length + 1}`)),
+        events: [ev],
+        startTime: ev.ts,
+        endTime: ev.ts,
+        duration: 0
+      }
+      currentTurn.steps.push(currentStep)
+    } else {
+      currentStep.events.push(ev)
+      currentStep.endTime = Math.max(currentStep.endTime, ev.ts)
+    }
+  })
+
+  const toolsSummary = {}
+  events.forEach(e => {
+    if (e.toolName) toolsSummary[e.toolName] = (toolsSummary[e.toolName] || 0) + (e.type === 'tool_call' ? 1 : 0)
+  })
+
+  return {
+    sessionId: (rawEntries[0] && (rawEntries[0].session_id || rawEntries[0].sessionId)) || `session_${Date.now()}`,
+    version: '2.0',
+    startTime: events[0]?.ts || Date.now(),
+    endTime: events[events.length - 1]?.ts || Date.now(),
+    duration: Math.max(0, (events[events.length - 1]?.ts || 0) - (events[0]?.ts || 0)),
+    turns,
+    allEvents: events,
+    totalEvents: events.length,
+    totalTurns: turns.length,
+    toolsSummary,
+    sourceFileName: fileName
+  }
+}
+
+// --- Session Loader ---
+function loadSession(session) {
+  state.session = session
+  state.activeEvents = [...session.allEvents]
+  state.currentFrame = 0
+  state.selectedSeq = session.allEvents[0]?.seq || null
+  stopPlay()
+
+  // Update Header Meta
+  dom.metaSessionId.textContent = session.sessionId || 'session'
+  dom.metaCounts.textContent = `${session.totalTurns || session.turns.length} Turns · ${session.totalEvents || session.allEvents.length} Events`
+  dom.metaDuration.textContent = formatDuration(session.duration)
+  const totalTokens = session.totalTokens?.total || session.allEvents.reduce((sum, e) => sum + (e.tokens?.total || 0), 0)
+  dom.metaTokens.textContent = `${formatTokens(totalTokens)} Tokens`
+
+  // Update Scrubber
+  dom.scrubber.max = Math.max(0, state.activeEvents.length - 1)
+  dom.scrubber.value = 0
+
+  // Populate Tool Filter Dropdown
+  dom.toolFilter.innerHTML = `<option value="">${t('all_tools')}</option>`
+  if (session.toolsSummary) {
+    const tools = Object.keys(session.toolsSummary)
+    if (tools.length > 0) {
+      dom.toolFilter.style.display = 'inline-block'
+      tools.forEach(tool => {
+        const opt = document.createElement('option')
+        opt.value = tool
+        opt.textContent = `${tool} (${session.toolsSummary[tool]})`
+        dom.toolFilter.appendChild(opt)
+      })
+    } else {
+      dom.toolFilter.style.display = 'none'
+    }
+  }
+
+  render()
+}
+
+// --- Filtering & Search ---
+function applyFilters() {
+  if (!state.session) return
+
+  let filtered = [...state.session.allEvents]
+
+  // Type filter
+  if (state.filterType === 'tool') {
+    filtered = filtered.filter(e => e.type === 'tool_call' || e.type === 'tool_result')
+  } else if (state.filterType === 'error') {
+    filtered = filtered.filter(e => e.type === 'error' || (e.exitCode !== undefined && e.exitCode !== 0))
+  } else if (state.filterType === 'reasoning') {
+    filtered = filtered.filter(e => e.type === 'reasoning')
+  } else if (state.filterType === 'user') {
+    filtered = filtered.filter(e => e.type === 'user_message')
+  }
+
+  // Specific tool filter
+  if (state.toolFilter) {
+    filtered = filtered.filter(e => e.toolName === state.toolFilter)
+  }
+
+  // Search query
+  if (state.searchQuery.trim()) {
+    const q = state.searchQuery.trim()
+    let regex = null
+    if (state.isRegex) {
+      try { regex = new RegExp(q, 'i') } catch (_) {}
+    }
+
+    filtered = filtered.filter(e => {
+      const texts = [
+        e.content || '',
+        e.toolName || '',
+        e.args ? JSON.stringify(e.args) : '',
+        e.result ? JSON.stringify(e.result) : '',
+        e.error?.message || ''
+      ]
+      if (regex) {
+        return texts.some(txt => regex.test(txt))
+      }
+      const lowerQ = q.toLowerCase()
+      return texts.some(txt => txt.toLowerCase().includes(lowerQ))
+    })
+  }
+
+  state.activeEvents = filtered
+  state.currentFrame = 0
+  dom.scrubber.max = Math.max(0, state.activeEvents.length - 1)
+  dom.scrubber.value = 0
+  if (state.activeEvents.length > 0) {
+    state.selectedSeq = state.activeEvents[0].seq
+  }
+
+  renderTimeline()
+  renderInspector()
+  updateFrameUI()
+}
+
+// --- Playback Engine ---
+function togglePlay() {
+  if (state.isPlaying) {
+    stopPlay()
+  } else {
+    startPlay()
+  }
+}
+
+function startPlay() {
+  if (!state.activeEvents.length) return
+  state.isPlaying = true
+  dom.btnPlay.textContent = '⏸'
+  dom.btnPlay.classList.add('active')
+
+  const interval = Math.max(100, Math.round(1000 / state.speed))
+  state.playTimer = setInterval(() => {
+    if (state.currentFrame < state.activeEvents.length - 1) {
+      goToFrame(state.currentFrame + 1)
+    } else {
+      stopPlay()
+    }
+  }, interval)
+}
+
+function stopPlay() {
+  state.isPlaying = false
+  dom.btnPlay.textContent = '▶'
+  dom.btnPlay.classList.remove('active')
+  if (state.playTimer) {
+    clearInterval(state.playTimer)
+    state.playTimer = null
+  }
+}
+
+function prevStep() {
+  stopPlay()
+  if (state.currentFrame > 0) {
+    goToFrame(state.currentFrame - 1)
+  }
+}
+
+function nextStep() {
+  stopPlay()
+  if (state.currentFrame < state.activeEvents.length - 1) {
+    goToFrame(state.currentFrame + 1)
+  }
+}
+
+function goToFrame(index) {
+  if (index < 0 || index >= state.activeEvents.length) return
+  state.currentFrame = index
+  dom.scrubber.value = index
+  const ev = state.activeEvents[index]
+  if (ev) {
+    state.selectedSeq = ev.seq
+    dom.seqInput.value = ev.seq
+  }
+  updateFrameUI()
+  highlightTimelineCard(ev?.seq)
+  renderInspector()
+}
+
+function jumpToSeq(seq) {
+  const idx = state.activeEvents.findIndex(e => e.seq === seq)
+  if (idx !== -1) {
+    stopPlay()
+    goToFrame(idx)
+  } else {
+    // Search in full session
+    const fullEv = state.session?.allEvents.find(e => e.seq === seq)
+    if (fullEv) {
+      // Clear filters to find it
+      state.filterType = 'all'
+      state.toolFilter = ''
+      state.searchQuery = ''
+      dom.searchInput.value = ''
+      dom.filterPills.querySelectorAll('.pill').forEach(p => p.classList.toggle('active', p.getAttribute('data-filter') === 'all'))
+      applyFilters()
+      const newIdx = state.activeEvents.findIndex(e => e.seq === seq)
+      if (newIdx !== -1) goToFrame(newIdx)
+    }
+  }
+}
+
+function jumpToolCall(direction) {
+  const currentSeq = state.selectedSeq || 0
+  const toolIndices = []
+  state.activeEvents.forEach((e, idx) => {
+    if (e.type === 'tool_call') toolIndices.push(idx)
+  })
+  if (toolIndices.length === 0) return
+
+  if (direction > 0) {
+    const nextIdx = toolIndices.find(idx => idx > state.currentFrame)
+    if (nextIdx !== undefined) goToFrame(nextIdx)
+    else goToFrame(toolIndices[0])
+  } else {
+    const prevList = toolIndices.filter(idx => idx < state.currentFrame)
+    if (prevList.length > 0) goToFrame(prevList[prevList.length - 1])
+    else goToFrame(toolIndices[toolIndices.length - 1])
+  }
+}
+
+function updateFrameUI() {
+  const total = state.activeEvents.length
+  const cur = total === 0 ? 0 : state.currentFrame + 1
+  dom.currentFrameLabel.textContent = `${cur} / ${total}`
+  dom.timelineCountBadge.textContent = String(total)
+}
+
+// --- Main Rendering ---
+function render() {
+  renderSessionTree()
+  renderTimeline()
+  renderInspector()
+  updateFrameUI()
+}
+
+function renderSessionTree() {
+  if (!state.session || !state.session.turns.length) {
+    dom.sessionTree.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">📂</div>
+        <div>${t('no_session')}</div>
+      </div>`
+    dom.turnCountBadge.textContent = '0'
+    return
+  }
+
+  dom.turnCountBadge.textContent = String(state.session.turns.length)
+  let html = ''
+
+  state.session.turns.forEach(turn => {
+    const errorBadge = turn.status === 'error' ? '<span class="badge badge-red">ERR</span>' : ''
+    const toolBadge = turn.toolsUsed.length > 0 ? `<span class="badge badge-amber">${turn.toolsUsed.length} tools</span>` : ''
+
+    html += `
+      <div class="turn-node" data-turn="${turn.turnIndex}">
+        <div class="turn-header" onclick="window.__selectTurn(${turn.turnIndex})">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span>Turn ${turn.turnIndex}</span>
+            ${errorBadge}
+            ${toolBadge}
+          </div>
+          <span style="font-size: 10px; color: var(--text-muted);">${formatDuration(turn.duration)}</span>
+        </div>
+        <div class="turn-prompt" title="${escapeHtml(turn.userPrompt)}">
+          ${escapeHtml(turn.userPrompt.slice(0, 45))}${turn.userPrompt.length > 45 ? '...' : ''}
+        </div>
+        <div class="steps-list">
+    `
+
+    turn.steps.forEach(step => {
+      const stepError = step.hasError ? '⚠️ ' : ''
+      html += `
+        <div class="step-node" onclick="window.__jumpToSeq(${step.startSeq})">
+          <span>${stepError}${escapeHtml(step.title)}</span>
+          <span style="color: var(--text-muted); font-size: 10px;">${formatDuration(step.duration)}</span>
+        </div>
+      `
+    })
+
+    html += `
+        </div>
+      </div>
+    `
+  })
+
+  dom.sessionTree.innerHTML = html
+}
+
+function renderTimeline() {
+  if (!state.activeEvents.length) {
+    dom.timelineList.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">⚡</div>
+        <div>${state.session ? '无符合条件的事件' : t('drag_hint')}</div>
+      </div>`
+    return
+  }
+
+  let html = ''
+  state.activeEvents.forEach((ev, idx) => {
+    const isSelected = ev.seq === state.selectedSeq ? 'selected' : ''
+    let badgeClass = 'badge-gray'
+    let badgeText = ev.type
+
+    switch (ev.type) {
+      case 'user_message': badgeClass = 'badge-blue'; badgeText = 'User'; break;
+      case 'assistant_message': badgeClass = 'badge-green'; badgeText = 'Assistant'; break;
+      case 'reasoning': badgeClass = 'badge-purple'; badgeText = 'Reasoning'; break;
+      case 'tool_call': badgeClass = 'badge-amber'; badgeText = `Tool: ${ev.toolName || 'call'}`; break;
+      case 'tool_result': badgeClass = 'badge-teal'; badgeText = `Result: ${ev.toolName || 'tool'}`; break;
+      case 'approval_request': badgeClass = 'badge-orange'; badgeText = 'Approval Req'; break;
+      case 'approval_result': badgeClass = 'badge-orange'; badgeText = 'Approved'; break;
+      case 'error': badgeClass = 'badge-red'; badgeText = 'Error'; break;
+    }
+
+    let bodyHtml = ''
+    if (ev.type === 'tool_call') {
+      const argsStr = typeof ev.args === 'string' ? ev.args : JSON.stringify(ev.args, null, 2)
+      bodyHtml = `<div class="card-body-preview" style="color: var(--accent-amber);">${escapeHtml(argsStr || '')}</div>`
+    } else if (ev.type === 'tool_result') {
+      const resStr = typeof ev.result === 'string' ? ev.result : JSON.stringify(ev.result, null, 2)
+      const exitBadge = ev.exitCode !== undefined && ev.exitCode !== 0
+        ? `<span class="badge badge-red">Exit: ${ev.exitCode}</span> `
+        : ''
+      bodyHtml = `<div>${exitBadge}</div><div class="card-body-preview">${escapeHtml((resStr || '').slice(0, 300))}</div>`
+    } else if (ev.type === 'reasoning') {
+      const isExpanded = state.expandedReasonings.has(ev.seq)
+      const toggleLabel = isExpanded ? t('collapse_reasoning') : t('expand_reasoning')
+      bodyHtml = `
+        <div class="card-body ${isExpanded ? 'expanded' : ''}" style="color: var(--accent-purple); font-style: italic;">
+          ${escapeHtml(ev.content || '')}
+        </div>
+        <button class="btn" style="padding: 2px 6px; font-size: 10px; align-self: flex-start; margin-top: 4px;" onclick="window.__toggleReasoning(${ev.seq}, event)">${toggleLabel}</button>
+      `
+    } else if (ev.type === 'error') {
+      bodyHtml = `<div style="color: var(--accent-red); font-weight: 500;">❌ ${escapeHtml(ev.error?.message || ev.content || '')}</div>`
+    } else {
+      bodyHtml = `<div class="card-body">${escapeHtml(ev.content || '')}</div>`
+    }
+
+    html += `
+      <div class="event-card type-${ev.type} ${isSelected}" id="event-card-${ev.seq}" onclick="window.__selectEvent(${ev.seq}, ${idx})">
+        <div class="card-header">
+          <div class="card-badge-group">
+            <span class="badge ${badgeClass}">${badgeText}</span>
+            <span class="card-seq">#${ev.seq}</span>
+          </div>
+          <div class="card-meta">
+            ${ev.duration ? `<span>${formatDuration(ev.duration)}</span>` : ''}
+            ${ev.tokens?.total ? `<span>${ev.tokens.total} tok</span>` : ''}
+            <span>${new Date(ev.ts).toLocaleTimeString()}</span>
+          </div>
+        </div>
+        ${bodyHtml}
+      </div>
+    `
+  })
+
+  dom.timelineList.innerHTML = html
+}
+
+function highlightTimelineCard(seq) {
+  document.querySelectorAll('.event-card').forEach(card => card.classList.remove('selected'))
+  if (!seq) return
+  const card = document.getElementById(`event-card-${seq}`)
+  if (card) {
+    card.classList.add('selected')
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }
+}
+
+function renderInspector() {
+  const ev = state.activeEvents.find(e => e.seq === state.selectedSeq) || state.session?.allEvents.find(e => e.seq === state.selectedSeq)
+
+  if (!ev) {
+    dom.inspectorContent.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <div>${t('select_event_hint')}</div>
+      </div>`
+    return
+  }
+
+  // Raw Tab
+  if (state.activeTab === 'raw') {
+    const rawJson = JSON.stringify(ev.raw || ev, null, 2)
+    dom.inspectorContent.innerHTML = `
+      <div class="inspector-section">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span class="section-label">RAW JSON EVENT #${ev.seq}</span>
+          <button class="btn" style="padding: 2px 6px; font-size: 11px;" onclick="window.__copyText(${JSON.stringify(rawJson)})">📋 ${t('copy')}</button>
+        </div>
+        <div class="code-block">${syntaxHighlightJson(rawJson)}</div>
+      </div>
+    `
+    return
+  }
+
+  // Formatted Tab
+  let html = `
+    <!-- Metadata Grid -->
+    <div class="inspector-section">
+      <span class="section-label">METADATA</span>
+      <div class="meta-grid">
+        <div class="meta-item">
+          <span class="meta-item-label">EVENT TYPE</span>
+          <span class="meta-item-val" style="color: var(--accent-blue);">${ev.type}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-item-label">SEQ / TS</span>
+          <span class="meta-item-val">#${ev.seq} · ${new Date(ev.ts).toLocaleTimeString()}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-item-label">MODEL</span>
+          <span class="meta-item-val">${ev.model || 'N/A'}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-item-label">DURATION</span>
+          <span class="meta-item-val">${formatDuration(ev.duration)}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-item-label">TOKENS</span>
+          <span class="meta-item-val">${ev.tokens?.total ? `${ev.tokens.total} (in: ${ev.tokens.input || 0}, out: ${ev.tokens.output || 0})` : 'N/A'}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-item-label">PARENT SEQ</span>
+          <span class="meta-item-val">${ev.parentSeq ? `<a href="javascript:void(0)" onclick="window.__jumpToSeq(${ev.parentSeq})" style="color: var(--accent-blue);">#${ev.parentSeq}</a>` : 'None'}</span>
+        </div>
+      </div>
+    </div>
+  `
+
+  // Tool Call details
+  if (ev.type === 'tool_call') {
+    const argsFormatted = JSON.stringify(ev.args, null, 2)
+    html += `
+      <div class="inspector-section">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span class="section-label" style="color: var(--accent-amber);">${t('tool_parameters')}: ${escapeHtml(ev.toolName || '')}</span>
+          <button class="btn" style="padding: 2px 6px; font-size: 11px;" onclick="window.__copyText(${JSON.stringify(argsFormatted)})">📋 ${t('copy')}</button>
+        </div>
+        <div class="code-block">${syntaxHighlightJson(argsFormatted)}</div>
+      </div>
+    `
+  }
+
+  // Tool Result details
+  if (ev.type === 'tool_result') {
+    const resFormatted = typeof ev.result === 'string' ? ev.result : JSON.stringify(ev.result, null, 2)
+    const jumpBtn = ev.parentSeq
+      ? `<button class="btn" style="padding: 2px 6px; font-size: 11px;" onclick="window.__jumpToSeq(${ev.parentSeq})">🔗 ${t('jump_to_call')}${ev.parentSeq}</button>`
+      : ''
+
+    html += `
+      <div class="inspector-section">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span class="section-label" style="color: var(--accent-teal);">${t('tool_output')} (Exit: ${ev.exitCode ?? 0})</span>
+          <div style="display: flex; gap: 6px;">
+            ${jumpBtn}
+            <button class="btn" style="padding: 2px 6px; font-size: 11px;" onclick="window.__copyText(${JSON.stringify(resFormatted)})">📋 ${t('copy')}</button>
+          </div>
+        </div>
+        <div class="code-block">${escapeHtml(resFormatted)}</div>
+      </div>
+    `
+  }
+
+  // Reasoning details
+  if (ev.type === 'reasoning') {
+    html += `
+      <div class="inspector-section">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span class="section-label" style="color: var(--accent-purple);">${t('reasoning_block')}</span>
+          <button class="btn" style="padding: 2px 6px; font-size: 11px;" onclick="window.__copyText(${JSON.stringify(ev.content || '')})">📋 ${t('copy')}</button>
+        </div>
+        <div class="code-block" style="color: var(--accent-purple); font-style: italic;">${escapeHtml(ev.content || '')}</div>
+      </div>
+    `
+  }
+
+  // Error details
+  if (ev.type === 'error' || ev.error) {
+    const errObj = ev.error || {}
+    html += `
+      <div class="inspector-section">
+        <span class="section-label" style="color: var(--accent-red);">ERROR DETAILS</span>
+        <div style="background: rgba(248, 81, 73, 0.1); border: 1px solid var(--accent-red); border-radius: 6px; padding: 10px; color: var(--accent-red);">
+          <div style="font-weight: 600; font-size: 13px;">${escapeHtml(errObj.message || ev.content || 'Error')}</div>
+          ${errObj.code ? `<div style="font-size: 11px; margin-top: 4px;">Code: ${errObj.code}</div>` : ''}
+        </div>
+      </div>
+    `
+    if (errObj.stack) {
+      html += `
+        <div class="inspector-section">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span class="section-label">${t('stack_trace')}</span>
+            <button class="btn" style="padding: 2px 6px; font-size: 11px;" onclick="window.__copyText(${JSON.stringify(errObj.stack)})">📋 ${t('copy')}</button>
+          </div>
+          <div class="code-block" style="color: var(--text-muted); font-size: 11px;">${escapeHtml(errObj.stack)}</div>
+        </div>
+      `
+    }
+  }
+
+  // Message Content
+  if (ev.content && ev.type !== 'reasoning' && ev.type !== 'error') {
+    const title = ev.type === 'user_message' ? t('user_prompt') : t('assistant_reply')
+    html += `
+      <div class="inspector-section">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span class="section-label">${title}</span>
+          <button class="btn" style="padding: 2px 6px; font-size: 11px;" onclick="window.__copyText(${JSON.stringify(ev.content)})">📋 ${t('copy')}</button>
+        </div>
+        <div class="code-block">${escapeHtml(ev.content)}</div>
+      </div>
+    `
+  }
+
+  dom.inspectorContent.innerHTML = html
+}
+
+// --- Global helper triggers ---
+window.__selectTurn = function(turnIndex) {
+  const turn = state.session?.turns.find(t => t.turnIndex === turnIndex)
+  if (turn) {
+    jumpToSeq(turn.startSeq)
+  }
+}
+
+window.__jumpToSeq = function(seq) {
+  jumpToSeq(seq)
+}
+
+window.__selectEvent = function(seq, index) {
+  state.selectedSeq = seq
+  state.currentFrame = index
+  dom.scrubber.value = index
+  dom.seqInput.value = seq
+  updateFrameUI()
+  highlightTimelineCard(seq)
+  renderInspector()
+}
+
+window.__toggleReasoning = function(seq, event) {
+  event.stopPropagation()
+  if (state.expandedReasonings.has(seq)) {
+    state.expandedReasonings.delete(seq)
+  } else {
+    state.expandedReasonings.add(seq)
+  }
+  renderTimeline()
+}
+
+window.__copyText = function(text) {
+  navigator.clipboard.writeText(text).then(() => {
+    alert(t('copied'))
+  }).catch(() => {
+    // Fallback
+    const input = document.createElement('textarea')
+    input.value = text
+    document.body.appendChild(input)
+    input.select()
+    document.execCommand('copy')
+    document.body.removeChild(input)
+    alert(t('copied'))
+  })
+}
+
+// --- Export & Desensitization Modal Logic ---
+function openExportModal() {
+  if (!state.session) {
+    alert(t('no_session'))
+    return
+  }
+  dom.exportModal.classList.add('open')
+  updateDiffPreview()
+}
+
+function closeExportModal() {
+  dom.exportModal.classList.remove('open')
+}
+
+function getMaskOptions() {
+  return {
+    maskApiKeys: dom.maskApiKeys.checked,
+    maskEnvVars: dom.maskEnvVars.checked,
+    maskPaths: dom.maskPaths.checked,
+    customRegex: dom.maskCustomRegex.value
+  }
+}
+
+function updateDiffPreview() {
+  if (!state.session) return
+  const sampleEvents = state.session.allEvents.slice(0, 5)
+  const sampleRaw = JSON.stringify(sampleEvents, null, 2).slice(0, 500)
+  const opts = getMaskOptions()
+  const maskedRaw = maskStringClient(sampleRaw, opts)
+
+  dom.diffBefore.textContent = sampleRaw
+  dom.diffAfter.textContent = maskedRaw
+}
+
+function executeExport() {
+  if (!state.session) return
+  const opts = getMaskOptions()
+  const maskedSession = maskObjectClient(state.session, opts)
+
+  // Package single-file HTML
+  const htmlBundle = generateClientHtmlBundle(maskedSession)
+  const blob = new Blob([htmlBundle], { type: 'text/html;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `dsh-replay-${state.session.sessionId || 'session'}.html`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+  closeExportModal()
+}
+
+function generateClientHtmlBundle(sessionData) {
+  const currentHtml = document.documentElement.outerHTML
+  // Inject session data directly before </head>
+  const scriptTag = `<script>window.__DSH_SESSION__ = ${JSON.stringify(sessionData)};<\/script>`
+  return currentHtml.replace('</head>', `${scriptTag}\n</head>`)
+}
+
+// Start application
+window.addEventListener('DOMContentLoaded', init)
+
+</script>
+</body>
+</html>

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>dsh-replay - DSH 会话日志可视化回放器</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-top">
+      <div class="brand-section">
+        <div class="brand-title">
+          <span>⚡ dsh-replay</span>
+          <span class="brand-badge">v2.0</span>
+        </div>
+        <div class="session-info" id="session-meta">
+          <span class="session-badge" id="meta-session-id">No Session Loaded</span>
+          <span id="meta-counts">0 Turns · 0 Events</span>
+          <span id="meta-duration">0s</span>
+          <span id="meta-tokens">0 Tokens</span>
+        </div>
+      </div>
+
+      <div class="header-controls">
+        <input type="file" id="file-input" accept=".jsonl,.zstd" style="display: none;">
+        <button class="btn" id="btn-open" title="Open .jsonl or .jsonl.zstd file">
+          📂 <span data-i18n="open">打开日志</span>
+        </button>
+        <button class="btn btn-primary" id="btn-export-modal" title="Export standalone single-file HTML">
+          💾 <span data-i18n="export">导出分享</span>
+        </button>
+        <button class="btn btn-icon" id="btn-lang" title="Switch Language">
+          🌐 <span id="lang-label">EN</span>
+        </button>
+        <button class="btn btn-icon" id="btn-theme" title="Toggle Light/Dark Theme">
+          🌙
+        </button>
+      </div>
+    </div>
+
+    <!-- Playback & Scrubber Toolbar -->
+    <div class="playback-bar">
+      <div class="playback-controls">
+        <button class="btn btn-icon" id="btn-prev" title="Previous Step (Left Arrow)">⏮</button>
+        <button class="btn btn-primary btn-icon" id="btn-play" title="Play/Pause (Space)">▶</button>
+        <button class="btn btn-icon" id="btn-next" title="Next Step (Right Arrow)">⏭</button>
+        <select class="speed-select" id="speed-select" title="Playback Speed">
+          <option value="1">1x</option>
+          <option value="2">2x</option>
+          <option value="4">4x</option>
+          <option value="8">8x</option>
+        </select>
+      </div>
+
+      <div class="scrubber-container">
+        <span id="current-frame-label" style="font-size: 11px; font-family: var(--font-mono); min-width: 55px;">0 / 0</span>
+        <input type="range" class="scrubber" id="scrubber" min="0" max="0" value="0">
+        <div class="seq-jump">
+          <span>Seq:</span>
+          <input type="number" class="seq-input" id="seq-input" placeholder="seq">
+          <button class="btn btn-icon" id="btn-seq-go" style="padding: 2px 6px;">Go</button>
+        </div>
+      </div>
+
+      <div class="filter-bar">
+        <div class="search-box">
+          <span style="font-size: 12px; margin-right: 4px;">🔍</span>
+          <input type="text" class="search-input" id="search-input" placeholder="搜索内容、参数或结果 (按 / 聚焦)..." data-i18n-placeholder="search_placeholder">
+          <button class="btn btn-icon" id="btn-regex" style="padding: 1px 4px; font-size: 11px;" title="Regular Expression">.*</button>
+        </div>
+
+        <div class="filter-pills" id="filter-pills">
+          <div class="pill active" data-filter="all" data-i18n="filter_all">全部</div>
+          <div class="pill" data-filter="tool" data-i18n="filter_tool">工具调用</div>
+          <div class="pill" data-filter="error" data-i18n="filter_error">错误</div>
+          <div class="pill" data-filter="reasoning" data-i18n="filter_reasoning">推理</div>
+          <div class="pill" data-filter="user" data-i18n="filter_user">用户输入</div>
+        </div>
+
+        <select class="speed-select" id="tool-filter" style="display: none;">
+          <option value="" data-i18n="all_tools">所有工具</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main 3-Column Layout -->
+  <main class="main-container">
+    <!-- Left Column: Session Tree -->
+    <aside class="tree-col">
+      <div class="col-header">
+        <span data-i18n="session_tree">会话轮次 (Turns)</span>
+        <span id="turn-count-badge" class="badge badge-gray">0</span>
+      </div>
+      <div class="tree-list" id="session-tree">
+        <div class="empty-state">
+          <div class="empty-icon">📂</div>
+          <div data-i18n="no_session">暂未加载会话日志</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Center Column: Timeline -->
+    <section class="timeline-col">
+      <div class="col-header" style="background: var(--bg-secondary);">
+        <span data-i18n="timeline">执行时间线 (Timeline)</span>
+        <span id="timeline-count-badge" class="badge badge-gray">0</span>
+      </div>
+      <div class="timeline-list" id="timeline-list">
+        <div class="empty-state">
+          <div class="empty-icon">⚡</div>
+          <div data-i18n="drag_hint">请拖入 session.jsonl / .zstd 文件或点击上方打开</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right Column: Detail Inspector -->
+    <aside class="inspector-col">
+      <div class="inspector-tabs">
+        <button class="tab-btn active" id="tab-formatted" data-i18n="tab_formatted">格式化视图</button>
+        <button class="tab-btn" id="tab-raw" data-i18n="tab_raw">原始 JSON</button>
+      </div>
+      <div class="inspector-body" id="inspector-content">
+        <div class="empty-state">
+          <div class="empty-icon">🔍</div>
+          <div data-i18n="select_event_hint">在时间线中点击事件查看详情</div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Export & Desensitization Modal -->
+  <div class="modal-overlay" id="export-modal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <span data-i18n="export_modal_title">导出独立离线 HTML 回放文件</span>
+        <button class="btn btn-icon" id="btn-close-modal">✕</button>
+      </div>
+      <div class="modal-content">
+        <p style="color: var(--text-secondary); font-size: 12px;" data-i18n="export_desc">
+          导出的单文件 HTML 内嵌了完整交互式回放器和会话数据，接收方用任何浏览器均可直接双击打开离线浏览。
+        </p>
+
+        <div class="form-group">
+          <div class="section-label" data-i18n="privacy_options">隐私脱敏选项</div>
+          <label class="checkbox-label">
+            <input type="checkbox" id="mask-api-keys" checked>
+            <span data-i18n="mask_keys">脱敏 API 密钥 (OpenAI, DeepSeek, Bearer, Token 等)</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="mask-env-vars" checked>
+            <span data-i18n="mask_env">脱敏环境变量与敏感配置 (PASSWORD, SECRET, KEY 等)</span>
+          </label>
+          <label class="checkbox-label">
+            <input type="checkbox" id="mask-paths" checked>
+            <span data-i18n="mask_paths">脱敏用户家目录路径 (替换系统用户名路径为 ~)</span>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <div class="section-label" data-i18n="custom_regex">自定义脱敏正则 (可选)</div>
+          <input type="text" class="text-input" id="mask-custom-regex" placeholder="例如: 192\.168\.\d+\.\d+ 或 \b\d{11}\b">
+        </div>
+
+        <div class="form-group">
+          <div class="section-label" data-i18n="preview_diff">脱敏效果实时预览</div>
+          <div class="diff-preview">
+            <div>
+              <div class="diff-col-title" data-i18n="preview_before">原始数据片段:</div>
+              <div id="diff-before" style="color: var(--accent-red); white-space: pre-wrap;"></div>
+            </div>
+            <div>
+              <div class="diff-col-title" data-i18n="preview_after">脱敏后数据片段:</div>
+              <div id="diff-after" style="color: var(--accent-green); white-space: pre-wrap;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="btn-cancel-modal" data-i18n="cancel">取消</button>
+        <button class="btn btn-primary" id="btn-confirm-export" data-i18n="download_html">📥 下载离线 HTML</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drag and Drop Overlay -->
+  <div class="drop-overlay" id="drop-overlay">
+    <span>📥 释放文件以回放 (Release to replay .jsonl / .zstd)</span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

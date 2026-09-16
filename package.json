@@ -1,0 +1,62 @@
+{
+  "name": "dsh-replay",
+  "version": "1.0.0",
+  "description": "Visual session replay plugin for DSH (DeepSeek Harness) session logs",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "bin": {
+    "dsh-replay": "./bin/dsh-replay.js"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "web",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "node --test test/*.test.js",
+    "prepublishOnly": "npm run build && npm test",
+    "start": "node bin/dsh-replay.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CS-Ryan/dsh-replay.git"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek",
+    "deepseek-harness",
+    "cordis",
+    "plugin",
+    "replay",
+    "jsonl",
+    "zstd",
+    "session",
+    "timeline",
+    "visualization"
+  ],
+  "author": "CS-Ryan <ryanchenh@outlook.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/CS-Ryan/dsh-replay/issues"
+  },
+  "homepage": "https://github.com/CS-Ryan/dsh-replay#readme",
+  "dependencies": {
+    "fzstd": "^0.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "typescript": "^5.7.2"
+  },
+  "peerDependencies": {
+    "cordis": "*"
+  },
+  "peerDependenciesMeta": {
+    "cordis": {
+      "optional": true
+    }
+  }
+}

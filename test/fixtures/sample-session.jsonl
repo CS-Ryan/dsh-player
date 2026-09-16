@@ -1,0 +1,20 @@
+{"seq":1,"ts":1710000000000,"type":"user","role":"user","content":"请帮我检查项目目录中的配置文件，并统计代码行数","session_id":"dsh-session-20260913-abc1"}
+{"seq":2,"ts":1710000001200,"type":"reasoning","role":"assistant","model":"deepseek-r1","content":"用户要求检查项目目录中的配置文件并统计代码行数。\n首先我应该查看当前目录下的文件列表，确定配置文件名称。我将使用 shell.exec 执行目录查看命令。","duration":1200,"tokens":{"input":120,"output":80,"total":200}}
+{"seq":3,"ts":1710000001500,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"shell.exec","toolCallId":"call_001","args":{"command":"dir /b","timeout":5000},"tokens":{"input":200,"output":25,"total":225}}
+{"seq":4,"ts":1710000002100,"type":"tool_result","role":"tool","toolName":"shell.exec","toolCallId":"call_001","result":"package.json\nsrc\ntsconfig.json\nREADME.md\nAPI_KEY=sk-abcdef1234567890abcdef1234567890","exitCode":0,"duration":600}
+{"seq":5,"ts":1710000003000,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"项目根目录下包含 package.json, src, tsconfig.json 等关键文件。接下来我将读取 package.json 的配置信息。","tokens":{"input":260,"output":45,"total":305}}
+{"seq":6,"ts":1710000003200,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"file.read","toolCallId":"call_002","args":{"path":"C:\\Users\\ryanc\\Desktop\\dsh-replay\\package.json"},"tokens":{"input":310,"output":20,"total":330}}
+{"seq":7,"ts":1710000003500,"type":"tool_result","role":"tool","toolName":"file.read","toolCallId":"call_002","result":"{\n  \"name\": \"dsh-replay\",\n  \"version\": \"1.0.0\",\n  \"author\": \"ryan\"\n}","exitCode":0,"duration":300}
+{"seq":8,"ts":1710000004500,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"配置文件检查完毕，项目名称为 dsh-replay (v1.0.0)。","tokens":{"input":350,"output":30,"total":380}}
+{"seq":9,"ts":1710000010000,"type":"user","role":"user","content":"请帮我清理根目录下的临时日志文件 temp.log"}
+{"seq":10,"ts":1710000011000,"type":"reasoning","role":"assistant","model":"deepseek-r1","content":"用户要求删除文件 temp.log。在 DSH 规范中，破坏性文件删除需要发起用户审批请求。","duration":1000,"tokens":{"input":420,"output":50,"total":470}}
+{"seq":11,"ts":1710000011500,"type":"approval_request","role":"system","content":"请求删除敏感文件: temp.log","args":{"action":"file.delete","target":"C:\\Users\\ryanc\\Desktop\\dsh-replay\\temp.log","riskLevel":"medium"}}
+{"seq":12,"ts":1710000015000,"type":"approval_result","role":"user","content":"用户已批准删除操作","result":{"approved":true,"operator":"admin"}}
+{"seq":13,"ts":1710000015500,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"shell.exec","toolCallId":"call_003","args":{"command":"rm temp.log"},"tokens":{"input":510,"output":20,"total":530}}
+{"seq":14,"ts":1710000016000,"type":"tool_result","role":"tool","toolName":"shell.exec","toolCallId":"call_003","result":"File temp.log removed successfully.","exitCode":0,"duration":500}
+{"seq":15,"ts":1710000017000,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"已完成审批并成功删除了 temp.log 文件。","tokens":{"input":540,"output":25,"total":565}}
+{"seq":16,"ts":1710000020000,"type":"user","role":"user","content":"请尝试连接测试数据库"}
+{"seq":17,"ts":1710000021000,"type":"tool_call","role":"assistant","model":"deepseek-r1","toolName":"db.connect","toolCallId":"call_004","args":{"host":"127.0.0.1","port":5432,"password":"SuperSecretPassword999!"},"tokens":{"input":580,"output":30,"total":610}}
+{"seq":18,"ts":1710000022000,"type":"tool_result","role":"tool","toolName":"db.connect","toolCallId":"call_004","result":"Connection refused: ECONNREFUSED 127.0.0.1:5432","exitCode":1,"duration":1000}
+{"seq":19,"ts":1710000022200,"type":"error","role":"assistant","content":"数据库连接失败","error":{"message":"Connection refused: ECONNREFUSED 127.0.0.1:5432","code":"ECONNREFUSED","stack":"Error: connect ECONNREFUSED 127.0.0.1:5432\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1605:16)\n    at Protocol.handshake (/app/node_modules/pg/lib/connection.js:120:10)"}}
+{"seq":20,"ts":1710000023500,"type":"assistant_message","role":"assistant","model":"deepseek-r1","content":"连接测试数据库失败：ECONNREFUSED 127.0.0.1:5432。请检查本地 PostgreSQL 服务是否已启动。","tokens":{"input":650,"output":50,"total":700}}
